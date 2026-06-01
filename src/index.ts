@@ -8,6 +8,7 @@ import { handleGuildMemberAdd } from './bot/handlers/guildMemberAdd';
 import { handleGuildMemberRemove } from './bot/handlers/guildMemberRemove';
 import { handlePresenceUpdate } from './bot/handlers/presenceUpdate';
 import { initInviteCache, trackInviteCreate } from './bot/inviteCache';
+import { initObserverCache } from './bot/observerCache';
 import { logger } from './logger';
 
 const client = createClient();
@@ -23,6 +24,10 @@ client.once(Events.ClientReady, async (c) => {
     logger.info(`Hearth guild: ${config.HEARTH_GUILD_ID}`);
     await initInviteCache(c, config.HEARTH_GUILD_ID);
     logger.debug('Invite cache initialised');
+  }
+
+  if (config.OBSERVER_GUILD_ID) {
+    await initObserverCache(c, config.OBSERVER_GUILD_ID, config.OBSERVER_ROLE);
   }
 });
 
