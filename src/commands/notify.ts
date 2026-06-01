@@ -9,12 +9,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         await interaction.reply({
             content:
                 "Notifications on. You'll get a DM when someone in your circle activates hearth.",
-            flags: MessageFlags.Ephemeral
+            flags: MessageFlags.Ephemeral,
         })
     } else {
         await interaction.reply({
             content: 'Notifications off.',
-            flags: MessageFlags.Ephemeral
+            flags: MessageFlags.Ephemeral,
         })
     }
 }

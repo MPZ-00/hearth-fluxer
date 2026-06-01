@@ -9,23 +9,14 @@ import { logger } from '../../logger'
 
 type PresenceStatus = 'online' | 'idle' | 'dnd' | 'offline'
 
-export async function handlePresenceUpdate(
-    oldPresence: Presence | null,
-    newPresence: Presence
-) {
+export async function handlePresenceUpdate(oldPresence: Presence | null, newPresence: Presence) {
     const userId = newPresence.userId
     const newStatus = (newPresence.status ?? 'offline') as PresenceStatus
 
     const user = db.select().from(users).where(eq(users.id, userId)).get()
 
-    const cached = db
-        .select()
-        .from(presenceCache)
-        .where(eq(presenceCache.userId, userId))
-        .get()
-    const oldStatus = (cached?.status ??
-        oldPresence?.status ??
-        'offline') as PresenceStatus
+    const cached = db.select().from(presenceCache).where(eq(presenceCache.userId, userId)).get()
+    const oldStatus = (cached?.status ?? oldPresence?.status ?? 'offline') as PresenceStatus
 
     if (isObserver(userId)) {
         const watchers = user?.optedIn ? getNotifyWatchers(userId).length : 0
@@ -34,7 +25,7 @@ export async function handlePresenceUpdate(
             `presence [${name}] ${oldStatus} → ${newStatus}` +
                 ` | opted_in=${user?.optedIn ?? false}` +
                 ` | notify_watchers=${watchers}` +
-                ` | will_notify=${user?.optedIn && oldStatus === 'offline' && newStatus === 'online'}`
+                ` | will_notify=${user?.optedIn && oldStatus === 'offline' && newStatus === 'online'}`,
         )
     }
 
@@ -45,11 +36,11 @@ export async function handlePresenceUpdate(
         .values({
             userId,
             status: newStatus,
-            updatedAt: Math.floor(Date.now() / 1000)
+            updatedAt: Math.floor(Date.now() / 1000),
         })
         .onConflictDoUpdate({
             target: presenceCache.userId,
-            set: { status: newStatus, updatedAt: Math.floor(Date.now() / 1000) }
+            set: { status: newStatus, updatedAt: Math.floor(Date.now() / 1000) },
         })
         .run()
 

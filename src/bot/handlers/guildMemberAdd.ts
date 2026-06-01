@@ -28,26 +28,20 @@ export async function handleGuildMemberAdd(member: GuildMember) {
                 .where(eq(pendingInvites.code, usedCode))
                 .get()
 
-            db.delete(pendingInvites)
-                .where(eq(pendingInvites.code, usedCode))
-                .run()
+            db.delete(pendingInvites).where(eq(pendingInvites.code, usedCode)).run()
 
             if (!pending || pending.userId !== member.id) {
                 logger.warn(
-                    `Unauthorised join: member ${member.id}, invite ${usedCode ?? 'unknown'}`
+                    `Unauthorised join: member ${member.id}, invite ${usedCode ?? 'unknown'}`,
                 )
                 await member.kick('hearth: join not authorised')
                 return
             }
-            logger.debug(
-                `Verified join: member ${member.id} via invite ${usedCode}`
-            )
+            logger.debug(`Verified join: member ${member.id} via invite ${usedCode}`)
         }
     } catch {
         // Insufficient permissions to fetch invites; allow the join
-        logger.warn(
-            `Could not verify invite for ${member.id} joining ${member.guild.id}`
-        )
+        logger.warn(`Could not verify invite for ${member.id} joining ${member.guild.id}`)
     }
 
     // Mutual whitelist: shared server membership is what makes presence visible in Discord.
@@ -64,7 +58,6 @@ export async function handleGuildMemberAdd(member: GuildMember) {
     }
 
     // Notify circle members: the user joined hearth = they're available to their circle
-    const displayName =
-        member.user?.displayName ?? member.user?.username ?? member.id
+    const displayName = member.user?.displayName ?? member.user?.username ?? member.id
     await notifyCircle(member.client, member.id, displayName)
 }
