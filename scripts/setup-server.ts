@@ -91,7 +91,6 @@ hearth lets you appear online only to the people you choose. Everyone else sees 
 Once you have joined this server, your circle can see your real status.
 
 Use ${s(cmd, 'add')} to add people to your circle. They need to add the bot and run ${s(cmd, 'status')} \`on\` themselves before you can see their status in return.
-
 ${s(cmd, 'status')} \`off\` removes you immediately. You go dark to everyone.
 
 Source and self-hosting: https://github.com/MPZ-00/hearth`,
@@ -249,8 +248,6 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, botId: string) {
         permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
     })
 
-    void tender
-
     await guild.roles.everyone.setPermissions([
         PermissionFlagsBits.ViewChannel,
         PermissionFlagsBits.ReadMessageHistory,
@@ -290,13 +287,27 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, botId: string) {
     )
     await getOrCreateChannel(guild, 'general', catCommunity)
     const showcase = await getOrCreateChannel(guild, 'showcase', catCommunity)
-    await getOrCreateChannel(guild, 'help', catSupport)
+    const help = await getOrCreateChannel(
+        guild,
+        'help',
+        catSupport,
+        readonlyOverwrites(everyone.id, tender.id),
+    )
     const bugReports = await getOrCreateChannel(guild, 'bug-reports', catSupport)
 
     console.log('Posting messages...')
 
+    const helpContent = `Common setup issues:
+
+1. ${s(cmd, 'status')} \`on\` gives an error: make sure the bot is installed to your apps. Install link in <#${welcome.id}>.
+2. Not getting DMs: run ${s(cmd, 'notify')} \`on\`. The other person also needs ${s(cmd, 'status')} \`on\`.
+3. Your circle can't see you: they need to run ${s(cmd, 'status')} \`on\` and join the hearth server too.
+
+For reproducible bugs, post in <#${bugReports.id}>.`
+
     await pinOrUpdate(welcome, botId, M.welcome)
     await pinOrUpdate(rules, botId, M.rules)
+    await pinOrUpdate(help, botId, helpContent)
     await pinOrUpdate(bugReports, botId, M.bugReportTemplate)
 
     const annPins = await announcements.messages.fetchPinned()
