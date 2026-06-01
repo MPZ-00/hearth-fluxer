@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/hearth.db
+data/hearth.db-shm
+data/hearth.db-wal
+.env
+*.js.map
