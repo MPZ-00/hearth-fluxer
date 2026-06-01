@@ -1,4 +1,4 @@
-import { Events } from 'discord.js'
+import { Events, ActivityType } from 'discord.js'
 import { config } from './config'
 import { db } from './db/client'
 import { hearthGuilds } from './db/schema'
@@ -11,11 +11,13 @@ import { initInviteCache, trackInviteCreate, removeFromCache } from './bot/invit
 import { initObserverCache } from './bot/observerCache'
 import { drainKickQueue } from './services/kickQueue'
 import { logger } from './logger'
+import { BOT_VERSION } from './version'
 
 const client = createClient()
 
 client.once(Events.ClientReady, async (c) => {
-    logger.info(`Logged in as ${c.user.tag}`)
+    logger.info(`Logged in as ${c.user.tag} — ${BOT_VERSION}`)
+    c.user.setActivity(BOT_VERSION, { type: ActivityType.Playing })
 
     if (config.HEARTH_GUILD_ID) {
         db.insert(hearthGuilds)

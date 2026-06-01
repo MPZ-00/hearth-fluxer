@@ -49,6 +49,12 @@ const commands = [
         )
         .setDMPermission(true)
         .toJSON(),
+
+    new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Show available commands')
+        .setDMPermission(true)
+        .toJSON(),
 ]
 
 const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN)

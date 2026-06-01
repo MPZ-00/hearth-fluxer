@@ -11,7 +11,7 @@ async function notifyAdmin(client: Client, message: string): Promise<void> {
     if (!config.ADMIN_CHANNEL_ID) return
     try {
         const ch = await client.channels.fetch(config.ADMIN_CHANNEL_ID)
-        if (ch?.isTextBased()) await ch.send(message)
+        if (ch?.isSendable()) await ch.send(message)
     } catch (err) {
         logger.error('Could not send admin alert:', err)
     }

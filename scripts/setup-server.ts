@@ -1,5 +1,6 @@
 /**
- * One-shot server setup. Run once on a fresh guild.
+ * Server setup script. Safe to re-run: existing channels are skipped and pinned messages are
+ * edited in place rather than creating duplicates.
  * Usage:
  *   tsx scripts/setup-server.ts official <GUILD_ID>
  *   tsx scripts/setup-server.ts dev <GUILD_ID>
@@ -15,6 +16,7 @@ import {
     type Guild,
     type CategoryChannel,
     type TextChannel,
+    type Role,
 } from 'discord.js'
 import { config } from '../src/config'
 
@@ -65,10 +67,9 @@ async function fetchCommandMap(): Promise<CmdMap> {
 }
 
 /** Returns an interactive slash command mention, or backtick fallback if ID is unknown. */
-function s(cmd: CmdMap, name: string, sub?: string): string {
-    const fullName = sub ? `${name} ${sub}` : name
+function s(cmd: CmdMap, name: string): string {
     const id = cmd[name]
-    return id ? `</${fullName}:${id}>` : `\`/${fullName}\``
+    return id ? `</${name}:${id}>` : `\`/${name}\``
 }
 
 // ---------------------------------------------------------------------------
@@ -84,19 +85,19 @@ function buildMessages(cmd: CmdMap, clientId: string) {
 
 hearth lets you appear online only to the people you choose. Everyone else sees you offline.
 
-**To get started:** add the bot to your apps, then run ${s(cmd, 'status', 'on')}.
-→ ${installUrl}
+**To get started:** add the bot to your apps, then run ${s(cmd, 'status')} \`on\`.
+**[Install App](${installUrl})**
 
-Once you've joined this server, your circle can see your real status.
+Once you have joined this server, your circle can see your real status.
 
-Use ${s(cmd, 'add')} to add people to your circle. They'll need to add the bot and run ${s(cmd, 'status', 'on')} themselves before you can see their status in return.
+Use ${s(cmd, 'add')} to add people to your circle. They need to add the bot and run ${s(cmd, 'status')} \`on\` themselves before you can see their status in return.
 
-${s(cmd, 'status', 'off')} removes you immediately. You go dark to everyone.
+${s(cmd, 'status')} \`off\` removes you immediately. You go dark to everyone.
 
 Source and self-hosting: https://github.com/MPZ-00/hearth`,
 
             rules: `1. Be decent to each other.
-2. Keep #help on topic — setup questions, bugs, and usage only.
+2. Keep #help on topic: setup questions, bugs, and usage only.
 3. #showcase is for sharing how you're using hearth, not general chat.
 4. No spam, no unsolicited DMs to other members.`,
 
@@ -110,7 +111,7 @@ Source and self-hosting: https://github.com/MPZ-00/hearth`,
 
 The more specific, the faster it gets fixed.`,
 
-            showcase: `This channel is for sharing how you're using hearth — friend groups, setups, anything worth showing. No support questions here; use #help for those.`,
+            showcase: `This channel is for sharing how you're using hearth: friend groups, setups, anything worth showing. No support questions here; use #help for those.`,
         },
 
         dev: {
@@ -118,7 +119,7 @@ The more specific, the faster it gets fixed.`,
 
 If you're making a non-obvious call in a PR, drop a note here first. Keeps the PR comments clean and gives context to anyone who comes back to it later.`,
 
-            roadmap: `Current focus: v0.1.0 — core functionality stable and self-hostable.
+            roadmap: `Current focus: v0.1.0, core functionality stable and self-hostable.
 
 v0.2.0 will add multi-tenant support (one hosted instance, many hearth guilds).
 
@@ -127,42 +128,70 @@ Priorities are tracked in GitHub issues. This channel is for broader direction d
             botTesting: `Test the dev bot instance here. The dev bot runs against a separate database so nothing here affects production.
 
 Useful commands to test:
-${s(cmd, 'status', 'on')} — should generate a one-time invite
-${s(cmd, 'status', 'off')} — should kick you from the hearth guild
-${s(cmd, 'add')} — adds to whitelist
-${s(cmd, 'list')} — shows your circle
-${s(cmd, 'notify', 'on')} then go offline and come back online`,
+${s(cmd, 'status')} \`on\`: generates a one-time invite
+${s(cmd, 'status')} \`off\`: kicks you from the hearth guild
+${s(cmd, 'add')}: adds to whitelist
+${s(cmd, 'list')}: shows your circle
+${s(cmd, 'notify')} \`on\`, then go offline and come back online`,
 
             presenceLab: `Dedicated channel for testing presence events. Keep a few test accounts sitting here so \`presenceUpdate\` fires reliably.
 
-To test notifications: enable ${s(cmd, 'notify', 'on')}, have a second account go offline, then come back online. Check that the DM arrives and that flapping (offline→online→offline→online quickly) only sends one notification.`,
+To test notifications: enable ${s(cmd, 'notify')} \`on\`, have a second account go offline, then come back online. Check that the DM arrives and that flapping (going offline and online quickly) only sends one notification.`,
         },
     }
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Idempotent helpers
 // ---------------------------------------------------------------------------
 
-async function makeCategory(guild: Guild, name: string): Promise<CategoryChannel> {
+type RoleOptions = Parameters<Guild['roles']['create']>[0]
+
+async function getOrCreateRole(guild: Guild, options: RoleOptions): Promise<Role> {
+    const existing = guild.roles.cache.find((r) => r.name === options.name)
+    if (existing) return existing
+    return guild.roles.create(options)
+}
+
+async function getOrCreateCategory(guild: Guild, name: string): Promise<CategoryChannel> {
+    const existing = guild.channels.cache.find(
+        (c) => c.type === ChannelType.GuildCategory && c.name === name,
+    )
+    if (existing) return existing as CategoryChannel
     return guild.channels.create({
         name,
         type: ChannelType.GuildCategory,
     }) as Promise<CategoryChannel>
 }
 
-async function makeChannel(
+async function getOrCreateChannel(
     guild: Guild,
     name: string,
     parent: CategoryChannel,
     overwrites: { id: string; allow?: bigint[]; deny?: bigint[] }[] = [],
 ): Promise<TextChannel> {
+    const existing = guild.channels.cache.find(
+        (c) => c.name === name && 'parentId' in c && c.parentId === parent.id,
+    )
+    if (existing) return existing as TextChannel
     return guild.channels.create({
         name,
         type: ChannelType.GuildText,
         parent: parent.id,
         permissionOverwrites: overwrites,
     }) as Promise<TextChannel>
+}
+
+/** Edits the bot's existing pinned message, or sends a new one and pins it. */
+async function pinOrUpdate(channel: TextChannel, botId: string, content: string): Promise<void> {
+    const pins = await channel.messages.fetchPinned()
+    const mine = pins.find((m) => m.author.id === botId)
+    if (mine) {
+        await mine.edit(content)
+    } else {
+        const msg = await channel.send(content)
+        await msg.pin()
+    }
 }
 
 function readonlyOverwrites(everyoneId: string, writerRoleId: string) {
@@ -176,19 +205,22 @@ function readonlyOverwrites(everyoneId: string, writerRoleId: string) {
 // Official server setup
 // ---------------------------------------------------------------------------
 
-async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
-    const M = buildMessages(cmd, clientId).official
-    console.log('Creating roles...')
+async function setupOfficial(guild: Guild, cmd: CmdMap, botId: string) {
+    const M = buildMessages(cmd, botId).official
 
+    await guild.roles.fetch()
+    await guild.channels.fetch()
+
+    console.log('Creating roles...')
     const everyone = guild.roles.everyone
 
-    const keeper = await guild.roles.create({
+    const keeper = await getOrCreateRole(guild, {
         name: 'keeper',
         colors: { primaryColor: C.ember },
         hoist: true,
         permissions: [PermissionFlagsBits.Administrator],
     })
-    const tender = await guild.roles.create({
+    const tender = await getOrCreateRole(guild, {
         name: 'tender',
         colors: { primaryColor: C.deepEmber },
         hoist: true,
@@ -198,24 +230,26 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
             PermissionFlagsBits.ModerateMembers,
         ],
     })
-    await guild.roles.create({
+    await getOrCreateRole(guild, {
         name: 'ember',
         colors: { primaryColor: C.warmOrange },
         hoist: false,
         permissions: [],
     })
-    await guild.roles.create({
+    await getOrCreateRole(guild, {
         name: 'guest',
         colors: { primaryColor: C.ash },
         hoist: false,
         permissions: [],
     })
-    await guild.roles.create({
+    await getOrCreateRole(guild, {
         name: 'hearth',
         colors: { primaryColor: C.charcoal },
         hoist: false,
         permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
     })
+
+    void tender
 
     await guild.roles.everyone.setPermissions([
         PermissionFlagsBits.ViewChannel,
@@ -225,56 +259,59 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
 
     console.log('Creating channels...')
 
-    const catStart = await makeCategory(guild, '📌 start here')
-    const welcome = await makeChannel(
+    const catStart = await getOrCreateCategory(guild, '📌 start here')
+    const catUpdates = await getOrCreateCategory(guild, '🔔 updates')
+    const catCommunity = await getOrCreateCategory(guild, '🔥 community')
+    const catSupport = await getOrCreateCategory(guild, '🛠 support')
+
+    const welcome = await getOrCreateChannel(
         guild,
         'welcome',
         catStart,
         readonlyOverwrites(everyone.id, keeper.id),
     )
-    const rules = await makeChannel(
+    const rules = await getOrCreateChannel(
         guild,
         'rules',
         catStart,
         readonlyOverwrites(everyone.id, keeper.id),
     )
-
-    const catUpdates = await makeCategory(guild, '🔔 updates')
-    const announcements = await makeChannel(
+    const announcements = await getOrCreateChannel(
         guild,
         'announcements',
         catUpdates,
         readonlyOverwrites(everyone.id, keeper.id),
     )
-    await makeChannel(guild, 'changelog', catUpdates, readonlyOverwrites(everyone.id, keeper.id))
+    await getOrCreateChannel(
+        guild,
+        'changelog',
+        catUpdates,
+        readonlyOverwrites(everyone.id, keeper.id),
+    )
+    await getOrCreateChannel(guild, 'general', catCommunity)
+    const showcase = await getOrCreateChannel(guild, 'showcase', catCommunity)
+    await getOrCreateChannel(guild, 'help', catSupport)
+    const bugReports = await getOrCreateChannel(guild, 'bug-reports', catSupport)
 
-    const catCommunity = await makeCategory(guild, '🔥 community')
-    await makeChannel(guild, 'general', catCommunity)
-    const showcase = await makeChannel(guild, 'showcase', catCommunity)
+    console.log('Posting messages...')
 
-    const catSupport = await makeCategory(guild, '🛠 support')
-    await makeChannel(guild, 'help', catSupport)
-    const bugReports = await makeChannel(guild, 'bug-reports', catSupport)
+    await pinOrUpdate(welcome, botId, M.welcome)
+    await pinOrUpdate(rules, botId, M.rules)
+    await pinOrUpdate(bugReports, botId, M.bugReportTemplate)
 
-    console.log('Posting initial messages...')
+    const annPins = await announcements.messages.fetchPinned()
+    if (annPins.size === 0) await announcements.send('Announcements will appear here.')
 
-    const welcomeMsg = await welcome.send(M.welcome)
-    await welcomeMsg.pin()
-
-    const rulesMsg = await rules.send(M.rules)
-    await rulesMsg.pin()
-
-    await announcements.send('Announcements will appear here.')
-    await showcase.send(M.showcase)
-
-    const bugMsg = await bugReports.send(M.bugReportTemplate)
-    await bugMsg.pin()
+    const showcasePins = await showcase.messages.fetchPinned()
+    if (showcasePins.size === 0) await showcase.send(M.showcase)
 
     const owner = await guild.fetchOwner()
-    await owner.roles.add(keeper)
-    console.log(`Assigned keeper to ${owner.user.tag}`)
+    if (!owner.roles.cache.has(keeper.id)) {
+        await owner.roles.add(keeper)
+        console.log(`Assigned keeper to ${owner.user.tag}`)
+    }
     console.log(
-        '⚠️  Move the bot\'s role ABOVE "keeper" in Server Settings → Roles before users can be assigned it.',
+        'Move the bot\'s role above "keeper" in Server Settings > Roles before users can be assigned it.',
     )
 }
 
@@ -282,37 +319,40 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
 // Dev server setup
 // ---------------------------------------------------------------------------
 
-async function setupDev(guild: Guild, cmd: CmdMap, clientId: string) {
-    const M = buildMessages(cmd, clientId).dev
-    console.log('Creating roles...')
+async function setupDev(guild: Guild, cmd: CmdMap, botId: string) {
+    const M = buildMessages(cmd, botId).dev
 
+    await guild.roles.fetch()
+    await guild.channels.fetch()
+
+    console.log('Creating roles...')
     const everyone = guild.roles.everyone
 
-    const architect = await guild.roles.create({
+    const architect = await getOrCreateRole(guild, {
         name: 'architect',
         colors: { primaryColor: C.ember },
         hoist: true,
         permissions: [PermissionFlagsBits.Administrator],
     })
-    const maintainer = await guild.roles.create({
+    const maintainer = await getOrCreateRole(guild, {
         name: 'maintainer',
         colors: { primaryColor: C.deepEmber },
         hoist: true,
         permissions: [PermissionFlagsBits.ManageMessages],
     })
-    await guild.roles.create({
+    await getOrCreateRole(guild, {
         name: 'spark',
         colors: { primaryColor: C.warmOrange },
         hoist: false,
         permissions: [],
     })
-    await guild.roles.create({
+    await getOrCreateRole(guild, {
         name: 'tester',
         colors: { primaryColor: C.coolGrey },
         hoist: false,
         permissions: [],
     })
-    await guild.roles.create({
+    await getOrCreateRole(guild, {
         name: 'hearth [dev]',
         colors: { primaryColor: C.ashGrey },
         hoist: false,
@@ -327,52 +367,60 @@ async function setupDev(guild: Guild, cmd: CmdMap, clientId: string) {
 
     console.log('Creating channels...')
 
-    const catMeta = await makeCategory(guild, '📌 meta')
-    const devNotes = await makeChannel(guild, 'dev-notes', catMeta)
-    const roadmap = await makeChannel(
+    const catMeta = await getOrCreateCategory(guild, '📌 meta')
+    const catDev = await getOrCreateCategory(guild, '🔨 development')
+    const catTesting = await getOrCreateCategory(guild, '🧪 testing')
+    const catBots = await getOrCreateCategory(guild, '🤖 bots')
+
+    const devNotes = await getOrCreateChannel(guild, 'dev-notes', catMeta)
+    const roadmap = await getOrCreateChannel(
         guild,
         'roadmap',
         catMeta,
         readonlyOverwrites(everyone.id, architect.id),
     )
-
-    const catDev = await makeCategory(guild, '🔨 development')
-    await makeChannel(guild, 'commits', catDev, readonlyOverwrites(everyone.id, maintainer.id))
-    await makeChannel(
+    await getOrCreateChannel(
+        guild,
+        'commits',
+        catDev,
+        readonlyOverwrites(everyone.id, maintainer.id),
+    )
+    await getOrCreateChannel(
         guild,
         'pull-requests',
         catDev,
         readonlyOverwrites(everyone.id, maintainer.id),
     )
-    await makeChannel(guild, 'issues', catDev, readonlyOverwrites(everyone.id, maintainer.id))
+    await getOrCreateChannel(
+        guild,
+        'issues',
+        catDev,
+        readonlyOverwrites(everyone.id, maintainer.id),
+    )
+    const botTesting = await getOrCreateChannel(guild, 'bot-testing', catTesting)
+    const presenceLab = await getOrCreateChannel(guild, 'presence-lab', catTesting)
+    await getOrCreateChannel(
+        guild,
+        'logs',
+        catTesting,
+        readonlyOverwrites(everyone.id, maintainer.id),
+    )
+    await getOrCreateChannel(guild, 'hearth-dev', catBots)
 
-    const catTesting = await makeCategory(guild, '🧪 testing')
-    const botTesting = await makeChannel(guild, 'bot-testing', catTesting)
-    const presenceLab = await makeChannel(guild, 'presence-lab', catTesting)
-    await makeChannel(guild, 'logs', catTesting, readonlyOverwrites(everyone.id, maintainer.id))
+    console.log('Posting messages...')
 
-    const catBots = await makeCategory(guild, '🤖 bots')
-    await makeChannel(guild, 'hearth-dev', catBots)
-
-    console.log('Posting initial messages...')
-
-    const notesMsg = await devNotes.send(M.devNotes)
-    await notesMsg.pin()
-
-    const roadmapMsg = await roadmap.send(M.roadmap)
-    await roadmapMsg.pin()
-
-    const testMsg = await botTesting.send(M.botTesting)
-    await testMsg.pin()
-
-    const labMsg = await presenceLab.send(M.presenceLab)
-    await labMsg.pin()
+    await pinOrUpdate(devNotes, botId, M.devNotes)
+    await pinOrUpdate(roadmap, botId, M.roadmap)
+    await pinOrUpdate(botTesting, botId, M.botTesting)
+    await pinOrUpdate(presenceLab, botId, M.presenceLab)
 
     const owner = await guild.fetchOwner()
-    await owner.roles.add(architect)
-    console.log(`Assigned architect to ${owner.user.tag}`)
+    if (!owner.roles.cache.has(architect.id)) {
+        await owner.roles.add(architect)
+        console.log(`Assigned architect to ${owner.user.tag}`)
+    }
     console.log(
-        '⚠️  Move the bot\'s role ABOVE "architect" in Server Settings → Roles before users can be assigned it.',
+        'Move the bot\'s role above "architect" in Server Settings > Roles before users can be assigned it.',
     )
 }
 
@@ -382,12 +430,12 @@ async function setupDev(guild: Guild, cmd: CmdMap, clientId: string) {
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] })
 
-client.once('clientReady', async () => {
-    console.log(`Logged in as ${client.user!.tag}`)
+client.once('clientReady', async (c) => {
+    console.log(`Logged in as ${c.user.tag}`)
 
     const guild = await client.guilds.fetch(guildId).catch(() => null)
     if (!guild) {
-        console.error(`Guild ${guildId} not found — is the bot in that server?`)
+        console.error(`Guild ${guildId} not found. Is the bot in that server?`)
         process.exit(1)
     }
 
@@ -403,9 +451,9 @@ client.once('clientReady', async () => {
 
     try {
         if (serverType === 'official') {
-            await setupOfficial(fullGuild, cmd, config.CLIENT_ID)
+            await setupOfficial(fullGuild, cmd, c.user.id)
         } else {
-            await setupDev(fullGuild, cmd, config.CLIENT_ID)
+            await setupDev(fullGuild, cmd, c.user.id)
         }
         console.log('Done.')
     } catch (err) {
