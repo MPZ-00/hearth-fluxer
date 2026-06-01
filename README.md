@@ -5,6 +5,10 @@
   <img src="https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg" alt="Node.js 22.12+">
   <a href="https://discord.gg/qsTAU7Vyfz"><img src="https://img.shields.io/badge/discord-dev%20server-5865F2?logo=discord&logoColor=white" alt="Discord dev server"></a>
   <br><br>
+  <a href="https://discord.com/oauth2/authorize?client_id=1511033910933458994&integration_type=1&scope=applications.commands">
+    <img src="https://img.shields.io/badge/add%20to%20discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Add to Discord">
+  </a>
+  <br><br>
   <em>Appear online only to your support circle. Invisible to everyone else.</em>
 </div>
 
@@ -68,6 +72,16 @@ npm run dev        # development, with live reload
 npm start          # production (after npm run build)
 ```
 
+### Generate your install link
+
+Users add hearth to their Discord apps, not to a server. The install URL uses `integration_type=1` (user install):
+
+```
+https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&integration_type=1&scope=applications.commands
+```
+
+Replace `YOUR_CLIENT_ID` with your application ID from the [Developer Portal](https://discord.com/developers/applications). You can also generate this link from the portal under **Installation → Install Link**.
+
 ### Setting up your hearth server
 
 1. Create a new Discord server. Keep it private and disable the default invite link.
@@ -86,7 +100,7 @@ npm start          # production (after npm run build)
 | `/add @user` | Add someone to your circle |
 | `/remove @user` | Remove someone from your circle |
 | `/list` | Show your current circle |
-| `/notify on` | Get a DM when a circle member comes online |
+| `/notify on` | Get a DM when a circle member activates hearth |
 | `/notify off` | Turn off notifications |
 
 ---

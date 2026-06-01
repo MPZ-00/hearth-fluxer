@@ -75,16 +75,21 @@ function s(cmd: CmdMap, name: string, sub?: string): string {
 // Initial messages
 // ---------------------------------------------------------------------------
 
-function buildMessages(cmd: CmdMap) {
+function buildMessages(cmd: CmdMap, clientId: string) {
+    const installUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&integration_type=1&scope=applications.commands`
+
     return {
         official: {
             welcome: `Welcome to the hearth server.
 
 hearth lets you appear online only to the people you choose. Everyone else sees you offline.
 
-To get started, add the hearth bot to your apps, then run ${s(cmd, 'status', 'on')}. You'll get a one-time invite to join this server. Once you're in, your circle can see your real status.
+**To get started:** add the bot to your apps, then run ${s(cmd, 'status', 'on')}.
+→ ${installUrl}
 
-Use ${s(cmd, 'add')} to add people to your circle. They'll need to run ${s(cmd, 'status', 'on')} themselves before you can see their status in return.
+Once you've joined this server, your circle can see your real status.
+
+Use ${s(cmd, 'add')} to add people to your circle. They'll need to add the bot and run ${s(cmd, 'status', 'on')} themselves before you can see their status in return.
 
 ${s(cmd, 'status', 'off')} removes you immediately. You go dark to everyone.
 
@@ -171,8 +176,8 @@ function readonlyOverwrites(everyoneId: string, writerRoleId: string) {
 // Official server setup
 // ---------------------------------------------------------------------------
 
-async function setupOfficial(guild: Guild, cmd: CmdMap) {
-    const M = buildMessages(cmd).official
+async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
+    const M = buildMessages(cmd, clientId).official
     console.log('Creating roles...')
 
     const everyone = guild.roles.everyone
@@ -267,8 +272,8 @@ async function setupOfficial(guild: Guild, cmd: CmdMap) {
 // Dev server setup
 // ---------------------------------------------------------------------------
 
-async function setupDev(guild: Guild, cmd: CmdMap) {
-    const M = buildMessages(cmd).dev
+async function setupDev(guild: Guild, cmd: CmdMap, clientId: string) {
+    const M = buildMessages(cmd, clientId).dev
     console.log('Creating roles...')
 
     const everyone = guild.roles.everyone
@@ -378,9 +383,9 @@ client.once('ready', async () => {
 
     try {
         if (serverType === 'official') {
-            await setupOfficial(fullGuild, cmd)
+            await setupOfficial(fullGuild, cmd, config.CLIENT_ID)
         } else {
-            await setupDev(fullGuild, cmd)
+            await setupDev(fullGuild, cmd, config.CLIENT_ID)
         }
         console.log('Done.')
     } catch (err) {
