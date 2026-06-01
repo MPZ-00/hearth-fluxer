@@ -4,7 +4,8 @@ import { db } from '../../db/client'
 import { hearthGuilds, users, pendingInvites } from '../../db/schema'
 import { addToCircle } from '../../services/whitelist'
 import { notifyCircle } from '../../services/notification'
-import { findConsumedInvite } from '../inviteCache'
+import { enqueueKick } from '../../services/kickQueue'
+import { updateInviteCache } from '../inviteCache'
 import { logger } from '../../logger'
 
 export async function handleGuildMemberAdd(member: GuildMember) {
@@ -28,26 +29,40 @@ export async function handleGuildMemberAdd(member: GuildMember) {
 
         if (userPending) {
             const freshInvites = await member.guild.invites.fetch()
-            findConsumedInvite(member.guild.id, freshInvites) // keep cache current
+            updateInviteCache(member.guild.id, freshInvites)
             const consumed = !freshInvites.has(userPending.code)
+            // Delete after evaluating — the invite has been processed regardless of outcome
             db.delete(pendingInvites).where(eq(pendingInvites.code, userPending.code)).run()
 
             if (!consumed) {
                 logger.warn(
                     `Unauthorised join: ${member.id} joined but pending invite ${userPending.code} is still live`,
                 )
-                await member.kick('hearth: join not authorised')
+                try {
+                    await member.kick('hearth: join not authorised')
+                } catch {
+                    // Kick failed; queue it so it can be retried once permissions are restored
+                    await enqueueKick(
+                        member.client,
+                        member.id,
+                        member.guild.id,
+                        'hearth: join not authorised',
+                    )
+                }
+                // Always return — never whitelist an unauthorised member regardless of kick outcome
                 return
             }
             logger.debug(`Verified join: ${member.id} via invite ${userPending.code}`)
         } else {
-            // No pending invite ─ possible manual admin add. Log and allow.
+            // No pending invite — possible manual admin add. Log and allow.
             logger.warn(
-                `No pending invite for joining member ${member.id} ─ allowing (possible manual add)`,
+                `No pending invite for joining member ${member.id} — allowing (possible manual add)`,
             )
         }
     } catch {
         logger.warn(`Could not verify invite for ${member.id} joining ${member.guild.id}`)
+        // Return rather than whitelisting a member whose validation threw
+        return
     }
 
     // Mutual whitelist: shared server membership is what makes presence visible in Discord.

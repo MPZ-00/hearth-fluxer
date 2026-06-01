@@ -3,15 +3,10 @@ import { db } from '../db/client'
 import { users, pendingInvites } from '../db/schema'
 import type { Client } from 'discord.js'
 import { config } from '../config'
+import { upsertUser, getUser } from '../db/helpers'
 import { enqueueKick } from './kickQueue'
 
-function upsertUser(id: string) {
-    db.insert(users).values({ id }).onConflictDoNothing().run()
-}
-
-export function getUser(id: string) {
-    return db.select().from(users).where(eq(users.id, id)).get()
-}
+export { getUser }
 
 /**
  * Sets opted_in status and, for self-hosted mode, handles guild membership:

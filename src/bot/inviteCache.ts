@@ -1,6 +1,6 @@
 import type { Client, Collection, Invite } from 'discord.js'
 
-// Per-guild: code -> uses count. Used to detect which invite was consumed on a member join.
+// Per-guild: code -> uses count.
 const cache = new Map<string, Map<string, number>>()
 
 export async function initInviteCache(client: Client, guildId: string): Promise<void> {
@@ -19,27 +19,11 @@ export function trackInviteCreate(guildId: string, code: string): void {
     if (guildCache) guildCache.set(code, 0)
 }
 
-/**
- * Compares fresh invite state against the cache to identify which invite was consumed.
- * maxUses=1 invites are deleted by Discord the moment they're used, so a missing code = used.
- * Updates the cache with the fresh state before returning.
- * Returns null when no consumed invite can be identified (e.g. cache miss after restart).
- */
-export function findConsumedInvite(
-    guildId: string,
-    freshInvites: Collection<string, Invite>,
-): string | null {
-    const guildCache = cache.get(guildId)
-    if (!guildCache) return null
+export function removeFromCache(guildId: string, code: string): void {
+    cache.get(guildId)?.delete(code)
+}
 
-    let consumed: string | null = null
-    for (const [code] of guildCache) {
-        if (!freshInvites.has(code)) {
-            consumed = code
-            break
-        }
-    }
-
+/** Replaces the cached invite state for a guild with the freshly-fetched list. */
+export function updateInviteCache(guildId: string, freshInvites: Collection<string, Invite>): void {
     cache.set(guildId, new Map(freshInvites.map((inv) => [inv.code, inv.uses ?? 0])))
-    return consumed
 }

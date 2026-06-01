@@ -7,7 +7,7 @@ import { handleInteractionCreate } from './bot/handlers/interactionCreate'
 import { handleGuildMemberAdd } from './bot/handlers/guildMemberAdd'
 import { handleGuildMemberRemove } from './bot/handlers/guildMemberRemove'
 import { handlePresenceUpdate } from './bot/handlers/presenceUpdate'
-import { initInviteCache, trackInviteCreate } from './bot/inviteCache'
+import { initInviteCache, trackInviteCreate, removeFromCache } from './bot/inviteCache'
 import { initObserverCache } from './bot/observerCache'
 import { drainKickQueue } from './services/kickQueue'
 import { logger } from './logger'
@@ -45,6 +45,9 @@ client.on(Events.GuildMemberRemove, handleGuildMemberRemove)
 client.on(Events.PresenceUpdate, handlePresenceUpdate)
 client.on(Events.InviteCreate, (invite) => {
     if (invite.guild) trackInviteCreate(invite.guild.id, invite.code)
+})
+client.on(Events.InviteDelete, (invite) => {
+    if (invite.guild) removeFromCache(invite.guild.id, invite.code)
 })
 
 client.login(config.DISCORD_TOKEN)

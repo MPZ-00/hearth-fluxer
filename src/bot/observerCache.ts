@@ -16,6 +16,7 @@ export async function initObserverCache(
     }
     try {
         const members = await guild.members.fetch()
+        observers.clear()
         for (const [, member] of members) {
             if (member.roles.cache.some((r) => r.name.toLowerCase() === roleName.toLowerCase())) {
                 observers.add(member.id)
