@@ -7,19 +7,22 @@ import { handleInteractionCreate } from './bot/handlers/interactionCreate';
 import { handleGuildMemberAdd } from './bot/handlers/guildMemberAdd';
 import { handleGuildMemberRemove } from './bot/handlers/guildMemberRemove';
 import { handlePresenceUpdate } from './bot/handlers/presenceUpdate';
+import { initInviteCache, trackInviteCreate } from './bot/inviteCache';
+import { logger } from './logger';
 
 const client = createClient();
 
 client.once(Events.ClientReady, async (c) => {
-  console.log(`Logged in as ${c.user.tag}`);
+  logger.info(`Logged in as ${c.user.tag}`);
 
-  // In self-hosted mode, register the configured guild as the hearth guild
   if (config.HEARTH_GUILD_ID) {
     db.insert(hearthGuilds)
       .values({ guildId: config.HEARTH_GUILD_ID })
       .onConflictDoNothing()
       .run();
-    console.log(`Hearth guild: ${config.HEARTH_GUILD_ID}`);
+    logger.info(`Hearth guild: ${config.HEARTH_GUILD_ID}`);
+    await initInviteCache(c, config.HEARTH_GUILD_ID);
+    logger.debug('Invite cache initialised');
   }
 });
 
@@ -27,5 +30,8 @@ client.on(Events.InteractionCreate, handleInteractionCreate);
 client.on(Events.GuildMemberAdd, handleGuildMemberAdd);
 client.on(Events.GuildMemberRemove, handleGuildMemberRemove);
 client.on(Events.PresenceUpdate, handlePresenceUpdate);
+client.on(Events.InviteCreate, (invite) => {
+  if (invite.guild) trackInviteCreate(invite.guild.id, invite.code);
+});
 
 client.login(config.DISCORD_TOKEN);

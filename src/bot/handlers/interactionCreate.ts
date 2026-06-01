@@ -1,4 +1,4 @@
-import type { Interaction } from 'discord.js';
+import { MessageFlags, type Interaction } from 'discord.js';
 
 type CommandModule = { execute: (i: never) => Promise<void> };
 
@@ -19,7 +19,7 @@ export async function handleInteractionCreate(interaction: Interaction) {
     await execute(interaction as never);
   } catch (err) {
     console.error(`Error in /${interaction.commandName}:`, err);
-    const msg = { content: 'Something went wrong.', ephemeral: true };
+    const msg = { content: 'Something went wrong.', flags: MessageFlags.Ephemeral };
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(msg);
     } else {

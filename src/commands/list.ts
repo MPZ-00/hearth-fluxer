@@ -1,4 +1,4 @@
-import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { EmbedBuilder, MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import { getCircle } from '../services/whitelist';
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -7,10 +7,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (entries.length === 0) {
     await interaction.reply({
       content: 'Your circle is empty. Use `/add @user` to add someone.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const lines = await Promise.all(
     entries.map(async (entry) => {
@@ -30,5 +32,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     .setColor(0xe8735a)
     .setFooter({ text: `${entries.length} member${entries.length === 1 ? '' : 's'}` });
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.editReply({ embeds: [embed] });
 }

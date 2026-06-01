@@ -35,3 +35,10 @@ export const presenceCache = sqliteTable('presence_cache', {
   status:    text('status', { enum: ['online', 'idle', 'dnd', 'offline'] }).notNull(),
   updatedAt: integer('updated_at').notNull().default(sql`(unixepoch())`),
 });
+
+// Binds a pending hearth-guild invite to the user who requested it.
+export const pendingInvites = sqliteTable('pending_invites', {
+  code:      text('code').primaryKey(),
+  userId:    text('user_id').notNull().references(() => users.id),
+  expiresAt: integer('expires_at').notNull(),
+});

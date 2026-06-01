@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import { isInCircle, removeFromCircle } from '../services/whitelist';
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -7,7 +7,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!isInCircle(interaction.user.id, target.id)) {
     await interaction.reply({
       content: `**${target.displayName}** isn't in your circle.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -16,6 +16,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   await interaction.reply({
     content: `Removed **${target.displayName}** from your circle.`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }

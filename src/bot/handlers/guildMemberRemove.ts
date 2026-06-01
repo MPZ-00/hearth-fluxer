@@ -1,8 +1,7 @@
 import type { GuildMember, PartialGuildMember } from 'discord.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { hearthGuilds } from '../../db/schema';
-import { removeFromCircle } from '../../services/whitelist';
+import { hearthGuilds, whitelist, users, pendingInvites } from '../../db/schema';
 
 export async function handleGuildMemberRemove(member: GuildMember | PartialGuildMember) {
   const isHearthGuild = db
@@ -13,11 +12,23 @@ export async function handleGuildMemberRemove(member: GuildMember | PartialGuild
 
   if (!isHearthGuild) return;
 
-  // Only remove guild_join-sourced entries; command-added entries survive a guild leave.
-  const existingMembers = await member.guild.members.fetch();
-  for (const [id] of existingMembers) {
-    if (id === member.id || id === member.client.user.id) continue;
-    removeFromCircle(member.id, id, 'guild_join');
-    removeFromCircle(id, member.id, 'guild_join');
-  }
+  // Remove all guild_join whitelist entries for this user from either side.
+  // Deleting by DB query (not guild.members.fetch) catches entries for already-departed members too.
+  db.delete(whitelist)
+    .where(
+      and(
+        eq(whitelist.source, 'guild_join'),
+        or(eq(whitelist.ownerId, member.id), eq(whitelist.memberId, member.id)),
+      ),
+    )
+    .run();
+
+  // Clear any pending invite they hadn't used
+  db.delete(pendingInvites).where(eq(pendingInvites.userId, member.id)).run();
+
+  // Sync DB state; an external kick shouldn't leave opted_in=true
+  db.update(users)
+    .set({ optedIn: false, updatedAt: Math.floor(Date.now() / 1000) })
+    .where(and(eq(users.id, member.id), eq(users.optedIn, true)))
+    .run();
 }

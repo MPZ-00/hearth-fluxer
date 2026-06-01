@@ -5,7 +5,7 @@
 	"main": "dist/index.js",
 	"type": "commonjs",
 	"scripts": {
-		"dev": "tsx watch src/index.ts",
+		"dev": "tsx watch src/index.ts --log-level debug",
 		"build": "tsc",
 		"start": "node dist/index.js",
 		"deploy": "tsx scripts/deploy-commands.ts",

@@ -1,9 +1,9 @@
-import type { ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import { setOptedIn } from '../services/status';
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const mode = interaction.options.getString('mode', true) as 'on' | 'off';
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const { inviteUrl } = await setOptedIn(interaction.client, interaction.user.id, mode === 'on');
 

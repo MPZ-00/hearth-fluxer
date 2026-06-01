@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import { setNotify } from '../services/status';
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -7,13 +7,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (mode === 'on') {
     await interaction.reply({
-      content: "Notifications on. You'll get a DM when someone in your circle comes online.",
-      ephemeral: true,
+      content: "Notifications on. You'll get a DM when someone in your circle becomes available.",
+      flags: MessageFlags.Ephemeral,
     });
   } else {
     await interaction.reply({
       content: 'Notifications off.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }
