@@ -34,13 +34,13 @@ if ((serverType !== 'official' && serverType !== 'dev') || !guildId) {
 // ---------------------------------------------------------------------------
 
 const C = {
-    ember: 0xe8735a,
-    deepEmber: 0xc45c3a,
-    warmOrange: 0xf5a27a,
-    ash: 0x8c7b75,
-    charcoal: 0x1a1a1a,
-    coolGrey: 0x6b8c8a,
-    ashGrey: 0x3d3535,
+    ember: '#e8735a',
+    deepEmber: '#c45c3a',
+    warmOrange: '#f5a27a',
+    ash: '#8c7b75',
+    charcoal: '#1a1a1a',
+    coolGrey: '#6b8c8a',
+    ashGrey: '#3d3535',
 } as const
 
 // ---------------------------------------------------------------------------
@@ -184,13 +184,13 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
 
     const keeper = await guild.roles.create({
         name: 'keeper',
-        color: C.ember,
+        colors: { primaryColor: C.ember },
         hoist: true,
         permissions: [PermissionFlagsBits.Administrator],
     })
     const tender = await guild.roles.create({
         name: 'tender',
-        color: C.deepEmber,
+        colors: { primaryColor: C.deepEmber },
         hoist: true,
         permissions: [
             PermissionFlagsBits.ManageMessages,
@@ -198,11 +198,21 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, clientId: string) {
             PermissionFlagsBits.ModerateMembers,
         ],
     })
-    await guild.roles.create({ name: 'ember', color: C.warmOrange, hoist: false, permissions: [] })
-    await guild.roles.create({ name: 'guest', color: C.ash, hoist: false, permissions: [] })
+    await guild.roles.create({
+        name: 'ember',
+        colors: { primaryColor: C.warmOrange },
+        hoist: false,
+        permissions: [],
+    })
+    await guild.roles.create({
+        name: 'guest',
+        colors: { primaryColor: C.ash },
+        hoist: false,
+        permissions: [],
+    })
     await guild.roles.create({
         name: 'hearth',
-        color: C.charcoal,
+        colors: { primaryColor: C.charcoal },
         hoist: false,
         permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
     })
@@ -280,21 +290,31 @@ async function setupDev(guild: Guild, cmd: CmdMap, clientId: string) {
 
     const architect = await guild.roles.create({
         name: 'architect',
-        color: C.ember,
+        colors: { primaryColor: C.ember },
         hoist: true,
         permissions: [PermissionFlagsBits.Administrator],
     })
     const maintainer = await guild.roles.create({
         name: 'maintainer',
-        color: C.deepEmber,
+        colors: { primaryColor: C.deepEmber },
         hoist: true,
         permissions: [PermissionFlagsBits.ManageMessages],
     })
-    await guild.roles.create({ name: 'spark', color: C.warmOrange, hoist: false, permissions: [] })
-    await guild.roles.create({ name: 'tester', color: C.coolGrey, hoist: false, permissions: [] })
+    await guild.roles.create({
+        name: 'spark',
+        colors: { primaryColor: C.warmOrange },
+        hoist: false,
+        permissions: [],
+    })
+    await guild.roles.create({
+        name: 'tester',
+        colors: { primaryColor: C.coolGrey },
+        hoist: false,
+        permissions: [],
+    })
     await guild.roles.create({
         name: 'hearth [dev]',
-        color: C.ashGrey,
+        colors: { primaryColor: C.ashGrey },
         hoist: false,
         permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
     })
@@ -362,7 +382,7 @@ async function setupDev(guild: Guild, cmd: CmdMap, clientId: string) {
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] })
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user!.tag}`)
 
     const guild = await client.guilds.fetch(guildId).catch(() => null)
