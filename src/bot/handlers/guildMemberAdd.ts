@@ -13,8 +13,7 @@ export async function handleGuildMemberAdd(member: GuildMember) {
 
   if (!isHearthGuild) return;
 
-  // Add every existing hearth-guild member to this user's circle, and vice versa.
-  // This reflects the natural Discord mechanic: shared server membership reveals presence.
+  // Mutual whitelist: shared server membership is what makes presence visible in Discord.
   const existingMembers = await member.guild.members.fetch();
   for (const [id] of existingMembers) {
     if (id === member.id || id === member.client.user.id) continue;

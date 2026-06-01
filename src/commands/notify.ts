@@ -7,12 +7,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (mode === 'on') {
     await interaction.reply({
-      content: "**Notifications on.** You'll get a DM when someone from your circle comes online.",
+      content: "Notifications on. You'll get a DM when someone in your circle comes online.",
       ephemeral: true,
     });
   } else {
     await interaction.reply({
-      content: '**Notifications off.**',
+      content: 'Notifications off.',
       ephemeral: true,
     });
   }

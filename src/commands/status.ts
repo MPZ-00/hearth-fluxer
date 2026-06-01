@@ -10,16 +10,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (mode === 'on') {
     if (inviteUrl) {
       await interaction.editReply(
-        `**Hearth is on.** Join your hearth server to become visible to your circle:\n${inviteUrl}\n\n*(This link expires in 5 minutes and can only be used once.)*`,
+        `You're on. Join the hearth server to become visible to your circle (5 minutes, one use):\n${inviteUrl}`,
       );
     } else {
       await interaction.editReply(
-        '**Hearth is on.** Your circle can now see your real status when you share the hearth server with them.',
+        "You're on. Your circle can see your real status now.",
       );
     }
   } else {
     await interaction.editReply(
-      '**Hearth is off.** You appear offline to everyone, including your circle.',
+      "You're off. You appear offline to everyone, including your circle.",
     );
   }
 }

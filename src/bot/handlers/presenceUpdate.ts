@@ -31,7 +31,7 @@ export async function handlePresenceUpdate(oldPresence: Presence | null, newPres
     })
     .run();
 
-  // Notify circle watchers only when the user transitions from offline → online
+  // Notify circle watchers only on offline-to-online transition
   if (oldStatus === 'offline' && newStatus === 'online') {
     const displayName = newPresence.user?.displayName ?? userId;
     await notifyCircle(newPresence.client, userId, displayName);

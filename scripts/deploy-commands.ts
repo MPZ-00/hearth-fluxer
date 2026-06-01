@@ -4,11 +4,11 @@ import { config } from '../src/config';
 const commands = [
   new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Toggle your hearth presence visibility')
+    .setDescription('Go visible to your circle, or disappear')
     .addStringOption((opt) =>
       opt
         .setName('mode')
-        .setDescription('on = visible to your circle, off = invisible to everyone')
+        .setDescription('on = your circle can see you, off = offline to everyone')
         .setRequired(true)
         .addChoices({ name: 'on', value: 'on' }, { name: 'off', value: 'off' }),
     )
@@ -17,25 +17,25 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('add')
-    .setDescription('Add someone to your support circle')
+    .setDescription('Add someone to your circle')
     .addUserOption((opt) =>
-      opt.setName('user').setDescription('User to add').setRequired(true),
+      opt.setName('user').setDescription('Who to add').setRequired(true),
     )
     .setDMPermission(true)
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName('remove')
-    .setDescription('Remove someone from your support circle')
+    .setDescription('Remove someone from your circle')
     .addUserOption((opt) =>
-      opt.setName('user').setDescription('User to remove').setRequired(true),
+      opt.setName('user').setDescription('Who to remove').setRequired(true),
     )
     .setDMPermission(true)
     .toJSON(),
 
   new SlashCommandBuilder()
     .setName('list')
-    .setDescription('Show your current support circle')
+    .setDescription("Show who's in your circle")
     .setDMPermission(true)
     .toJSON(),
 
@@ -58,5 +58,5 @@ const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
 (async () => {
   console.log('Registering slash commands...');
   await rest.put(Routes.applicationCommands(config.CLIENT_ID), { body: commands });
-  console.log('Done. Commands registered globally.');
+  console.log('Done.');
 })();

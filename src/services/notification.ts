@@ -9,7 +9,7 @@ export async function notifyCircle(client: Client, userId: string, displayName: 
     watchers.map(async ({ ownerId }) => {
       try {
         const user = await client.users.fetch(ownerId);
-        await user.send(`✶ **${displayName}** is available.`);
+        await user.send(`✶ ${displayName} is online.`);
       } catch {
         // User may have DMs closed; silently skip
       }
