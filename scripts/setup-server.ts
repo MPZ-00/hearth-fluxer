@@ -10,8 +10,9 @@ import {
     GatewayIntentBits,
     ChannelType,
     PermissionFlagsBits,
+    REST,
+    Routes,
     type Guild,
-    type Role,
     type CategoryChannel,
     type TextChannel,
 } from 'discord.js'
@@ -43,29 +44,58 @@ const C = {
 } as const
 
 // ---------------------------------------------------------------------------
+// Command mentions
+// ---------------------------------------------------------------------------
+
+type CmdMap = Record<string, string>
+
+/** Fetches registered global slash command IDs. Returns empty map on failure. */
+async function fetchCommandMap(): Promise<CmdMap> {
+    const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN)
+    try {
+        const cmds = (await rest.get(Routes.applicationCommands(config.CLIENT_ID))) as {
+            id: string
+            name: string
+        }[]
+        return Object.fromEntries(cmds.map((c) => [c.name, c.id]))
+    } catch {
+        console.warn('Could not fetch command IDs — messages will use plain text fallback.')
+        return {}
+    }
+}
+
+/** Returns an interactive slash command mention, or backtick fallback if ID is unknown. */
+function s(cmd: CmdMap, name: string, sub?: string): string {
+    const fullName = sub ? `${name} ${sub}` : name
+    const id = cmd[name]
+    return id ? `</${fullName}:${id}>` : `\`/${fullName}\``
+}
+
+// ---------------------------------------------------------------------------
 // Initial messages
 // ---------------------------------------------------------------------------
 
-const MESSAGES = {
-    official: {
-        welcome: `Welcome to the hearth server.
+function buildMessages(cmd: CmdMap) {
+    return {
+        official: {
+            welcome: `Welcome to the hearth server.
 
 hearth lets you appear online only to the people you choose. Everyone else sees you offline.
 
-To get started, run \`/status on\` anywhere the bot is installed, or DM it directly. You'll get a one-time invite to join this server. Once you're in, your circle can see your real status.
+To get started, add the hearth bot to your apps, then run ${s(cmd, 'status', 'on')}. You'll get a one-time invite to join this server. Once you're in, your circle can see your real status.
 
-Use \`/add @someone\` to add people to your circle. They'll need to run \`/status on\` themselves before you can see their status in return.
+Use ${s(cmd, 'add')} to add people to your circle. They'll need to run ${s(cmd, 'status', 'on')} themselves before you can see their status in return.
 
-\`/status off\` removes you immediately. You go dark to everyone.
+${s(cmd, 'status', 'off')} removes you immediately. You go dark to everyone.
 
 Source and self-hosting: https://github.com/MPZ-00/hearth`,
 
-        rules: `1. Be decent to each other.
-2. Keep #help on topic ─ setup questions, bugs, and usage only.
+            rules: `1. Be decent to each other.
+2. Keep #help on topic — setup questions, bugs, and usage only.
 3. #showcase is for sharing how you're using hearth, not general chat.
 4. No spam, no unsolicited DMs to other members.`,
 
-        bugReportTemplate: `To report a bug, post a message here with:
+            bugReportTemplate: `To report a bug, post a message here with:
 
 - hearth version (check \`package.json\`)
 - Self-hosted or public instance
@@ -75,34 +105,35 @@ Source and self-hosting: https://github.com/MPZ-00/hearth`,
 
 The more specific, the faster it gets fixed.`,
 
-        showcase: `This channel is for sharing how you're using hearth ─ friend groups, setups, anything worth showing. No support questions here; use #help for those.`,
-    },
+            showcase: `This channel is for sharing how you're using hearth — friend groups, setups, anything worth showing. No support questions here; use #help for those.`,
+        },
 
-    dev: {
-        devNotes: `This is where architecture decisions, open questions, and implementation notes live.
+        dev: {
+            devNotes: `This is where architecture decisions, open questions, and implementation notes live.
 
 If you're making a non-obvious call in a PR, drop a note here first. Keeps the PR comments clean and gives context to anyone who comes back to it later.`,
 
-        roadmap: `Current focus: v0.1.0 ─ core functionality stable and self-hostable.
+            roadmap: `Current focus: v0.1.0 — core functionality stable and self-hostable.
 
 v0.2.0 will add multi-tenant support (one hosted instance, many hearth guilds).
 
 Priorities are tracked in GitHub issues. This channel is for broader direction discussion.`,
 
-        botTesting: `Test the dev bot instance here. The dev bot runs against a separate database so nothing here affects production.
+            botTesting: `Test the dev bot instance here. The dev bot runs against a separate database so nothing here affects production.
 
 Useful commands to test:
-\`/status on\` ─ should generate a one-time invite
-\`/status off\` ─ should kick you from the hearth guild
-\`/add @someone\` ─ adds to whitelist
-\`/list\` ─ shows your circle
-\`/notify on\` then go offline and come back online`,
+${s(cmd, 'status', 'on')} — should generate a one-time invite
+${s(cmd, 'status', 'off')} — should kick you from the hearth guild
+${s(cmd, 'add')} — adds to whitelist
+${s(cmd, 'list')} — shows your circle
+${s(cmd, 'notify', 'on')} then go offline and come back online`,
 
-        presenceLab: `Dedicated channel for testing presence events. Keep a few test accounts sitting here so \`presenceUpdate\` fires reliably.
+            presenceLab: `Dedicated channel for testing presence events. Keep a few test accounts sitting here so \`presenceUpdate\` fires reliably.
 
-To test notifications: enable \`/notify on\`, have a second account go offline, then come back online. Check that the DM arrives and that flapping (offline→online→offline→online quickly) only sends one notification.`,
-    },
-} as const
+To test notifications: enable ${s(cmd, 'notify', 'on')}, have a second account go offline, then come back online. Check that the DM arrives and that flapping (offline→online→offline→online quickly) only sends one notification.`,
+        },
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -140,7 +171,8 @@ function readonlyOverwrites(everyoneId: string, writerRoleId: string) {
 // Official server setup
 // ---------------------------------------------------------------------------
 
-async function setupOfficial(guild: Guild) {
+async function setupOfficial(guild: Guild, cmd: CmdMap) {
+    const M = buildMessages(cmd).official
     console.log('Creating roles...')
 
     const everyone = guild.roles.everyone
@@ -161,18 +193,8 @@ async function setupOfficial(guild: Guild) {
             PermissionFlagsBits.ModerateMembers,
         ],
     })
-    await guild.roles.create({
-        name: 'ember',
-        color: C.warmOrange,
-        hoist: false,
-        permissions: [],
-    })
-    await guild.roles.create({
-        name: 'guest',
-        color: C.ash,
-        hoist: false,
-        permissions: [],
-    })
+    await guild.roles.create({ name: 'ember', color: C.warmOrange, hoist: false, permissions: [] })
+    await guild.roles.create({ name: 'guest', color: C.ash, hoist: false, permissions: [] })
     await guild.roles.create({
         name: 'hearth',
         color: C.charcoal,
@@ -180,7 +202,6 @@ async function setupOfficial(guild: Guild) {
         permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
     })
 
-    // Restrict @everyone from sending in announcement-type channels by default
     await guild.roles.everyone.setPermissions([
         PermissionFlagsBits.ViewChannel,
         PermissionFlagsBits.ReadMessageHistory,
@@ -222,32 +243,32 @@ async function setupOfficial(guild: Guild) {
 
     console.log('Posting initial messages...')
 
-    await welcome.send(MESSAGES.official.welcome)
-    await welcome.bulkDelete(0) // no-op; message is intentionally not pinned so it stays as first
-    const welcomeMsg = (await welcome.messages.fetch({ limit: 1 })).first()
-    if (welcomeMsg) await welcomeMsg.pin()
+    const welcomeMsg = await welcome.send(M.welcome)
+    await welcomeMsg.pin()
 
-    await rules.send(MESSAGES.official.rules)
-    const rulesMsg = (await rules.messages.fetch({ limit: 1 })).first()
-    if (rulesMsg) await rulesMsg.pin()
+    const rulesMsg = await rules.send(M.rules)
+    await rulesMsg.pin()
 
     await announcements.send('Announcements will appear here.')
-    await showcase.send(MESSAGES.official.showcase)
-    await bugReports.send(MESSAGES.official.bugReportTemplate)
-    const bugMsg = (await bugReports.messages.fetch({ limit: 1 })).first()
-    if (bugMsg) await bugMsg.pin()
+    await showcase.send(M.showcase)
 
-    // Assign keeper role to the bot owner (guild owner)
+    const bugMsg = await bugReports.send(M.bugReportTemplate)
+    await bugMsg.pin()
+
     const owner = await guild.fetchOwner()
     await owner.roles.add(keeper)
-    console.log(`Assigned keeper to server owner ${owner.user.tag}`)
+    console.log(`Assigned keeper to ${owner.user.tag}`)
+    console.log(
+        '⚠️  Move the bot\'s role ABOVE "keeper" in Server Settings → Roles before users can be assigned it.',
+    )
 }
 
 // ---------------------------------------------------------------------------
 // Dev server setup
 // ---------------------------------------------------------------------------
 
-async function setupDev(guild: Guild) {
+async function setupDev(guild: Guild, cmd: CmdMap) {
+    const M = buildMessages(cmd).dev
     console.log('Creating roles...')
 
     const everyone = guild.roles.everyone
@@ -264,18 +285,8 @@ async function setupDev(guild: Guild) {
         hoist: true,
         permissions: [PermissionFlagsBits.ManageMessages],
     })
-    await guild.roles.create({
-        name: 'spark',
-        color: C.warmOrange,
-        hoist: false,
-        permissions: [],
-    })
-    await guild.roles.create({
-        name: 'tester',
-        color: C.coolGrey,
-        hoist: false,
-        permissions: [],
-    })
+    await guild.roles.create({ name: 'spark', color: C.warmOrange, hoist: false, permissions: [] })
+    await guild.roles.create({ name: 'tester', color: C.coolGrey, hoist: false, permissions: [] })
     await guild.roles.create({
         name: 'hearth [dev]',
         color: C.ashGrey,
@@ -320,26 +331,24 @@ async function setupDev(guild: Guild) {
 
     console.log('Posting initial messages...')
 
-    await devNotes.send(MESSAGES.dev.devNotes)
-    const notesMsg = (await devNotes.messages.fetch({ limit: 1 })).first()
-    if (notesMsg) await notesMsg.pin()
+    const notesMsg = await devNotes.send(M.devNotes)
+    await notesMsg.pin()
 
-    await roadmap.send(MESSAGES.dev.roadmap)
-    const roadmapMsg = (await roadmap.messages.fetch({ limit: 1 })).first()
-    if (roadmapMsg) await roadmapMsg.pin()
+    const roadmapMsg = await roadmap.send(M.roadmap)
+    await roadmapMsg.pin()
 
-    await botTesting.send(MESSAGES.dev.botTesting)
-    const testMsg = (await botTesting.messages.fetch({ limit: 1 })).first()
-    if (testMsg) await testMsg.pin()
+    const testMsg = await botTesting.send(M.botTesting)
+    await testMsg.pin()
 
-    await presenceLab.send(MESSAGES.dev.presenceLab)
-    const labMsg = (await presenceLab.messages.fetch({ limit: 1 })).first()
-    if (labMsg) await labMsg.pin()
+    const labMsg = await presenceLab.send(M.presenceLab)
+    await labMsg.pin()
 
-    // Assign architect to guild owner
     const owner = await guild.fetchOwner()
     await owner.roles.add(architect)
-    console.log(`Assigned architect to server owner ${owner.user.tag}`)
+    console.log(`Assigned architect to ${owner.user.tag}`)
+    console.log(
+        '⚠️  Move the bot\'s role ABOVE "architect" in Server Settings → Roles before users can be assigned it.',
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -353,20 +362,25 @@ client.once('ready', async () => {
 
     const guild = await client.guilds.fetch(guildId).catch(() => null)
     if (!guild) {
-        console.error(`Guild ${guildId} not found ─ is the bot in that server?`)
+        console.error(`Guild ${guildId} not found — is the bot in that server?`)
         process.exit(1)
     }
 
-    // Fetch full guild object (guilds.fetch returns OAuth2Guild for large bot lists)
     const fullGuild = (await client.guilds.fetch(guildId)) as Guild
-
     console.log(`Setting up ${serverType} server: ${fullGuild.name}`)
+
+    const cmd = await fetchCommandMap()
+    if (Object.keys(cmd).length === 0) {
+        console.warn(
+            'No command IDs found. Run `npm run deploy` first for interactive command mentions.',
+        )
+    }
 
     try {
         if (serverType === 'official') {
-            await setupOfficial(fullGuild)
+            await setupOfficial(fullGuild, cmd)
         } else {
-            await setupDev(fullGuild)
+            await setupDev(fullGuild, cmd)
         }
         console.log('Done.')
     } catch (err) {
