@@ -33,4 +33,8 @@ export const config = {
     // Optional: guild to pull observer role from; defaults to hearth guild
     OBSERVER_GUILD_ID: process.env.OBSERVER_GUILD_ID ?? process.env.HEARTH_GUILD_ID ?? '',
     OBSERVER_ROLE: process.env.OBSERVER_ROLE ?? 'tester',
+    // Optional: channel to receive admin alerts (failed kicks, etc.)
+    ADMIN_CHANNEL_ID: process.env.ADMIN_CHANNEL_ID ?? '',
+    // Optional: guild to register /dev commands in (guild-scoped, instant)
+    DEV_GUILD_ID: process.env.DEV_GUILD_ID ?? '',
 } as const

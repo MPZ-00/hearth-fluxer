@@ -11,7 +11,19 @@ function upsertUser(id: string) {
 export function addToCircle(ownerId: string, memberId: string, source: WhitelistSource) {
     upsertUser(ownerId)
     upsertUser(memberId)
-    db.insert(whitelist).values({ ownerId, memberId, source }).onConflictDoNothing().run()
+    if (source === 'command') {
+        // Upgrade an existing guild_join entry to command-sourced so it survives guild departure.
+        db.insert(whitelist)
+            .values({ ownerId, memberId, source })
+            .onConflictDoUpdate({
+                target: [whitelist.ownerId, whitelist.memberId],
+                set: { source: 'command' },
+            })
+            .run()
+    } else {
+        // Never downgrade a command entry to guild_join.
+        db.insert(whitelist).values({ ownerId, memberId, source }).onConflictDoNothing().run()
+    }
 }
 
 export function removeFromCircle(ownerId: string, memberId: string, source?: WhitelistSource) {

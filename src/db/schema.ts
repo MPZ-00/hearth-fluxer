@@ -66,3 +66,15 @@ export const pendingInvites = sqliteTable('pending_invites', {
         .references(() => users.id),
     expiresAt: integer('expires_at').notNull(),
 })
+
+// Kicks that failed due to missing bot permissions; retried on next drain.
+export const kickQueue = sqliteTable('kick_queue', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull(),
+    guildId: text('guild_id').notNull(),
+    reason: text('reason').notNull().default('hearth /status off'),
+    queuedAt: integer('queued_at')
+        .notNull()
+        .default(sql`(unixepoch())`),
+    attempts: integer('attempts').notNull().default(0),
+})
