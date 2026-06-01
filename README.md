@@ -3,6 +3,7 @@
   <br><br>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg" alt="Node.js 22.12+">
+  <a href="https://discord.gg/qsTAU7Vyfz"><img src="https://img.shields.io/badge/discord-dev%20server-5865F2?logo=discord&logoColor=white" alt="Discord dev server"></a>
   <br><br>
   <em>Appear online only to your support circle. Invisible to everyone else.</em>
 </div>
@@ -96,7 +97,7 @@ If hearth is useful to you, consider [sponsoring](https://github.com/sponsors/MP
 
 ## Contributing
 
-Issues and PRs welcome. Open an issue before starting something large so we can talk through the approach first.
+Issues and PRs welcome. Open an issue before starting something large so we can talk through the approach first. For quicker back-and-forth, join the [dev server](https://discord.gg/qsTAU7Vyfz).
 
 ## License
 
