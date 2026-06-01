@@ -59,7 +59,7 @@ export function isInCircle(ownerId: string, memberId: string): boolean {
 
 /**
  * Returns users who have notify=true and explicitly added memberId via /add.
- * guild_join entries are excluded — auto-mutual connections don't imply notification consent.
+ * guild_join entries are excluded ─ auto-mutual connections don't imply notification consent.
  */
 export function getNotifyWatchers(memberId: string) {
     return db

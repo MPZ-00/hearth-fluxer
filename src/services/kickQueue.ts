@@ -12,7 +12,7 @@ export async function enqueueKick(
     reason: string,
 ): Promise<void> {
     db.insert(kickQueue).values({ userId, guildId, reason }).run()
-    logger.warn(`Kick queued for ${userId} — bot may be missing Kick Members permission`)
+    logger.warn(`Kick queued for ${userId} ─ bot may be missing Kick Members permission`)
 
     if (config.ADMIN_CHANNEL_ID) {
         try {

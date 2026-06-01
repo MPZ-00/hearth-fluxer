@@ -16,31 +16,37 @@ export async function handleGuildMemberAdd(member: GuildMember) {
 
     if (!isHearthGuild) return
 
-    // Verify this join used an invite that was issued for this specific user
+    // Look up the pending invite by userId first, then check if that specific code is gone.
+    // This avoids the race condition: two simultaneous joins each look for their own DB row
+    // rather than both comparing the same stale cache state.
     try {
-        const freshInvites = await member.guild.invites.fetch()
-        const usedCode = findConsumedInvite(member.guild.id, freshInvites)
+        const userPending = db
+            .select()
+            .from(pendingInvites)
+            .where(eq(pendingInvites.userId, member.id))
+            .get()
 
-        if (usedCode !== null) {
-            const pending = db
-                .select()
-                .from(pendingInvites)
-                .where(eq(pendingInvites.code, usedCode))
-                .get()
+        if (userPending) {
+            const freshInvites = await member.guild.invites.fetch()
+            findConsumedInvite(member.guild.id, freshInvites) // keep cache current
+            const consumed = !freshInvites.has(userPending.code)
+            db.delete(pendingInvites).where(eq(pendingInvites.code, userPending.code)).run()
 
-            db.delete(pendingInvites).where(eq(pendingInvites.code, usedCode)).run()
-
-            if (!pending || pending.userId !== member.id) {
+            if (!consumed) {
                 logger.warn(
-                    `Unauthorised join: member ${member.id}, invite ${usedCode ?? 'unknown'}`,
+                    `Unauthorised join: ${member.id} joined but pending invite ${userPending.code} is still live`,
                 )
                 await member.kick('hearth: join not authorised')
                 return
             }
-            logger.debug(`Verified join: member ${member.id} via invite ${usedCode}`)
+            logger.debug(`Verified join: ${member.id} via invite ${userPending.code}`)
+        } else {
+            // No pending invite ─ possible manual admin add. Log and allow.
+            logger.warn(
+                `No pending invite for joining member ${member.id} ─ allowing (possible manual add)`,
+            )
         }
     } catch {
-        // Insufficient permissions to fetch invites; allow the join
         logger.warn(`Could not verify invite for ${member.id} joining ${member.guild.id}`)
     }
 

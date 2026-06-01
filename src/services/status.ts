@@ -3,6 +3,7 @@ import { db } from '../db/client'
 import { users, pendingInvites } from '../db/schema'
 import type { Client } from 'discord.js'
 import { config } from '../config'
+import { enqueueKick } from './kickQueue'
 
 function upsertUser(id: string) {
     db.insert(users).values({ id }).onConflictDoNothing().run()
@@ -77,7 +78,7 @@ export async function setOptedIn(
             const member = await guild.members.fetch(userId).catch(() => null)
             if (member) await member.kick('hearth /status off')
         } catch {
-            // Member may already be gone
+            await enqueueKick(client, userId, guild.id, 'hearth /status off')
         }
         return {}
     }

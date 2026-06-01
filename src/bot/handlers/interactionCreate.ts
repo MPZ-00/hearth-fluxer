@@ -8,6 +8,7 @@ const modules: Record<string, () => Promise<CommandModule>> = {
     remove: () => import('../../commands/remove') as Promise<CommandModule>,
     list: () => import('../../commands/list') as Promise<CommandModule>,
     notify: () => import('../../commands/notify') as Promise<CommandModule>,
+    dev: () => import('../../commands/dev') as Promise<CommandModule>,
 }
 
 export async function handleInteractionCreate(interaction: Interaction) {

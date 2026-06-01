@@ -9,6 +9,7 @@ import { handleGuildMemberRemove } from './bot/handlers/guildMemberRemove'
 import { handlePresenceUpdate } from './bot/handlers/presenceUpdate'
 import { initInviteCache, trackInviteCreate } from './bot/inviteCache'
 import { initObserverCache } from './bot/observerCache'
+import { drainKickQueue } from './services/kickQueue'
 import { logger } from './logger'
 
 const client = createClient()
@@ -28,6 +29,13 @@ client.once(Events.ClientReady, async (c) => {
 
     if (config.OBSERVER_GUILD_ID) {
         await initObserverCache(c, config.OBSERVER_GUILD_ID, config.OBSERVER_ROLE)
+    }
+
+    const drained = await drainKickQueue(c)
+    if (drained.success > 0 || drained.failed > 0) {
+        logger.info(
+            `Startup kick queue drain: ${drained.success} succeeded, ${drained.failed} still pending`,
+        )
     }
 })
 

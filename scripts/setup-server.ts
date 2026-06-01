@@ -61,7 +61,7 @@ Use \`/add @someone\` to add people to your circle. They'll need to run \`/statu
 Source and self-hosting: https://github.com/MPZ-00/hearth`,
 
         rules: `1. Be decent to each other.
-2. Keep #help on topic — setup questions, bugs, and usage only.
+2. Keep #help on topic ─ setup questions, bugs, and usage only.
 3. #showcase is for sharing how you're using hearth, not general chat.
 4. No spam, no unsolicited DMs to other members.`,
 
@@ -75,7 +75,7 @@ Source and self-hosting: https://github.com/MPZ-00/hearth`,
 
 The more specific, the faster it gets fixed.`,
 
-        showcase: `This channel is for sharing how you're using hearth — friend groups, setups, anything worth showing. No support questions here; use #help for those.`,
+        showcase: `This channel is for sharing how you're using hearth ─ friend groups, setups, anything worth showing. No support questions here; use #help for those.`,
     },
 
     dev: {
@@ -83,7 +83,7 @@ The more specific, the faster it gets fixed.`,
 
 If you're making a non-obvious call in a PR, drop a note here first. Keeps the PR comments clean and gives context to anyone who comes back to it later.`,
 
-        roadmap: `Current focus: v0.1.0 — core functionality stable and self-hostable.
+        roadmap: `Current focus: v0.1.0 ─ core functionality stable and self-hostable.
 
 v0.2.0 will add multi-tenant support (one hosted instance, many hearth guilds).
 
@@ -92,10 +92,10 @@ Priorities are tracked in GitHub issues. This channel is for broader direction d
         botTesting: `Test the dev bot instance here. The dev bot runs against a separate database so nothing here affects production.
 
 Useful commands to test:
-\`/status on\` — should generate a one-time invite
-\`/status off\` — should kick you from the hearth guild
-\`/add @someone\` — adds to whitelist
-\`/list\` — shows your circle
+\`/status on\` ─ should generate a one-time invite
+\`/status off\` ─ should kick you from the hearth guild
+\`/add @someone\` ─ adds to whitelist
+\`/list\` ─ shows your circle
 \`/notify on\` then go offline and come back online`,
 
         presenceLab: `Dedicated channel for testing presence events. Keep a few test accounts sitting here so \`presenceUpdate\` fires reliably.
@@ -161,8 +161,18 @@ async function setupOfficial(guild: Guild) {
             PermissionFlagsBits.ModerateMembers,
         ],
     })
-    await guild.roles.create({ name: 'ember', color: C.warmOrange, hoist: false, permissions: [] })
-    await guild.roles.create({ name: 'guest', color: C.ash, hoist: false, permissions: [] })
+    await guild.roles.create({
+        name: 'ember',
+        color: C.warmOrange,
+        hoist: false,
+        permissions: [],
+    })
+    await guild.roles.create({
+        name: 'guest',
+        color: C.ash,
+        hoist: false,
+        permissions: [],
+    })
     await guild.roles.create({
         name: 'hearth',
         color: C.charcoal,
@@ -254,8 +264,18 @@ async function setupDev(guild: Guild) {
         hoist: true,
         permissions: [PermissionFlagsBits.ManageMessages],
     })
-    await guild.roles.create({ name: 'spark', color: C.warmOrange, hoist: false, permissions: [] })
-    await guild.roles.create({ name: 'tester', color: C.coolGrey, hoist: false, permissions: [] })
+    await guild.roles.create({
+        name: 'spark',
+        color: C.warmOrange,
+        hoist: false,
+        permissions: [],
+    })
+    await guild.roles.create({
+        name: 'tester',
+        color: C.coolGrey,
+        hoist: false,
+        permissions: [],
+    })
     await guild.roles.create({
         name: 'hearth [dev]',
         color: C.ashGrey,
@@ -333,7 +353,7 @@ client.once('ready', async () => {
 
     const guild = await client.guilds.fetch(guildId).catch(() => null)
     if (!guild) {
-        console.error(`Guild ${guildId} not found — is the bot in that server?`)
+        console.error(`Guild ${guildId} not found ─ is the bot in that server?`)
         process.exit(1)
     }
 
