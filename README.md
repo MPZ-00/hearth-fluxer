@@ -1,9 +1,11 @@
-# hearth
-
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg)](https://nodejs.org)
-
-**Appear online only to your support circle. Invisible to everyone else.**
+<div align="center">
+  <img src="assets/hearth-banner-github.png" width="100%" alt="hearth - appear online only to your circle">
+  <br><br>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg" alt="Node.js 22.12+">
+  <br><br>
+  <em>Appear online only to your support circle. Invisible to everyone else.</em>
+</div>
 
 ---
 
