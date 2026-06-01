@@ -11,6 +11,10 @@ import {
     GatewayIntentBits,
     ChannelType,
     PermissionFlagsBits,
+    AutoModerationRuleTriggerType,
+    AutoModerationActionType,
+    AutoModerationRuleEventType,
+    AutoModerationRuleKeywordPresetType,
     REST,
     Routes,
     type Guild,
@@ -200,6 +204,104 @@ function readonlyOverwrites(everyoneId: string, writerRoleId: string) {
     ]
 }
 
+function staffOnlyOverwrites(everyoneId: string, staffRoleId: string) {
+    return [
+        { id: everyoneId, deny: [PermissionFlagsBits.ViewChannel] },
+        {
+            id: staffRoleId,
+            allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.ReadMessageHistory,
+                PermissionFlagsBits.SendMessages,
+            ],
+        },
+    ]
+}
+
+// ---------------------------------------------------------------------------
+// AutoMod
+// ---------------------------------------------------------------------------
+
+type AutoModCreateOptions = Parameters<Guild['autoModerationRules']['create']>[0]
+
+async function setupAutoMod(
+    guild: Guild,
+    alertChannelId: string,
+    exemptRoleIds: string[],
+): Promise<void> {
+    const existing = await guild.autoModerationRules.fetch()
+    const existingNames = new Set(existing.map((r) => r.name))
+
+    async function ensure(name: string, options: Omit<AutoModCreateOptions, 'name'>) {
+        if (existingNames.has(name)) {
+            console.log(`  AutoMod rule already exists: ${name}`)
+            return
+        }
+        await guild.autoModerationRules.create({ name, ...options })
+        console.log(`  AutoMod rule created: ${name}`)
+    }
+
+    await ensure('Block profanity, sexual content and slurs', {
+        eventType: AutoModerationRuleEventType.MessageSend,
+        triggerType: AutoModerationRuleTriggerType.KeywordPreset,
+        triggerMetadata: {
+            presets: [
+                AutoModerationRuleKeywordPresetType.Profanity,
+                AutoModerationRuleKeywordPresetType.SexualContent,
+                AutoModerationRuleKeywordPresetType.Slurs,
+            ],
+        },
+        actions: [
+            {
+                type: AutoModerationActionType.BlockMessage,
+                metadata: { customMessage: 'Your message was blocked.' },
+            },
+            {
+                type: AutoModerationActionType.SendAlertMessage,
+                metadata: { channel: alertChannelId },
+            },
+        ],
+        exemptRoles: exemptRoleIds,
+        enabled: true,
+    })
+
+    await ensure('Block mention spam', {
+        eventType: AutoModerationRuleEventType.MessageSend,
+        triggerType: AutoModerationRuleTriggerType.MentionSpam,
+        triggerMetadata: {
+            mentionTotalLimit: 4,
+            mentionRaidProtectionEnabled: true,
+        },
+        actions: [
+            { type: AutoModerationActionType.BlockMessage },
+            {
+                type: AutoModerationActionType.SendAlertMessage,
+                metadata: { channel: alertChannelId },
+            },
+            {
+                type: AutoModerationActionType.Timeout,
+                metadata: { durationSeconds: 300 },
+            },
+        ],
+        exemptRoles: exemptRoleIds,
+        enabled: true,
+    })
+
+    await ensure('Block spam', {
+        eventType: AutoModerationRuleEventType.MessageSend,
+        triggerType: AutoModerationRuleTriggerType.Spam,
+        actions: [
+            { type: AutoModerationActionType.BlockMessage },
+            {
+                type: AutoModerationActionType.SendAlertMessage,
+                metadata: { channel: alertChannelId },
+            },
+        ],
+        exemptRoles: exemptRoleIds,
+        enabled: true,
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Official server setup
 // ---------------------------------------------------------------------------
@@ -294,6 +396,12 @@ async function setupOfficial(guild: Guild, cmd: CmdMap, botId: string) {
         readonlyOverwrites(everyone.id, tender.id),
     )
     const bugReports = await getOrCreateChannel(guild, 'bug-reports', catSupport)
+    const modLogs = await getOrCreateChannel(
+        guild,
+        'mod-logs',
+        catSupport,
+        staffOnlyOverwrites(everyone.id, tender.id),
+    )
 
     console.log('Posting messages...')
 
@@ -315,6 +423,13 @@ For reproducible bugs, post in <#${bugReports.id}>.`
 
     const showcasePins = await showcase.messages.fetchPinned()
     if (showcasePins.size === 0) await showcase.send(M.showcase)
+
+    console.log('Configuring AutoMod...')
+    try {
+        await setupAutoMod(guild, modLogs.id, [keeper.id, tender.id])
+    } catch {
+        console.warn('AutoMod setup failed — ensure the bot has Manage Server permission.')
+    }
 
     const owner = await guild.fetchOwner()
     if (!owner.roles.cache.has(keeper.id)) {
@@ -410,7 +525,7 @@ async function setupDev(guild: Guild, cmd: CmdMap, botId: string) {
     )
     const botTesting = await getOrCreateChannel(guild, 'bot-testing', catTesting)
     const presenceLab = await getOrCreateChannel(guild, 'presence-lab', catTesting)
-    await getOrCreateChannel(
+    const logs = await getOrCreateChannel(
         guild,
         'logs',
         catTesting,
@@ -424,6 +539,13 @@ async function setupDev(guild: Guild, cmd: CmdMap, botId: string) {
     await pinOrUpdate(roadmap, botId, M.roadmap)
     await pinOrUpdate(botTesting, botId, M.botTesting)
     await pinOrUpdate(presenceLab, botId, M.presenceLab)
+
+    console.log('Configuring AutoMod...')
+    try {
+        await setupAutoMod(guild, logs.id, [architect.id, maintainer.id])
+    } catch {
+        console.warn('AutoMod setup failed — ensure the bot has Manage Server permission.')
+    }
 
     const owner = await guild.fetchOwner()
     if (!owner.roles.cache.has(architect.id)) {
