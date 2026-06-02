@@ -6,7 +6,7 @@
     "type": "commonjs",
     "scripts": {
         "dev": "tsx watch src/index.ts --log-level debug",
-        "build": "tsc",
+        "build": "tsc && cp -r src/db/migrations dist/db/",
         "start": "node dist/index.js",
         "deploy": "tsx scripts/deploy-commands.ts",
         "deploy:dev": "tsx scripts/deploy-dev-commands.ts",
