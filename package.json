@@ -1,6 +1,6 @@
 {
     "name": "hearth",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Selective presence Discord bot: appear online only to your support circle",
     "main": "dist/index.js",
     "type": "commonjs",
