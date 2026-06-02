@@ -1,5 +1,6 @@
 import { EmbedBuilder, MessageFlags, type ChatInputCommandInteraction } from 'discord.js'
 import { BOT_VERSION } from '../version'
+import { config } from '../config'
 
 export async function execute(interaction: ChatInputCommandInteraction) {
     const cmds = await interaction.client.application!.commands.fetch()
@@ -9,8 +10,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return cmd ? `</${name}:${cmd.id}>` : `\`/${name}\``
     }
 
+    const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${config.CLIENT_ID}&integration_type=1&scope=applications.commands`
+
     const embed = new EmbedBuilder()
         .setTitle('hearth')
+        .setURL(inviteUrl)
         .setDescription(
             'You appear online only to the people you choose. Everyone else sees you offline.',
         )

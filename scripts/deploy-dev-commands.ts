@@ -26,6 +26,9 @@ const devCommands = [
         .addSubcommand((sub) =>
             sub.setName('queue-drain').setDescription('Retry all pending kicks in the queue'),
         )
+        .addSubcommand((sub) =>
+            sub.setName('update').setDescription('Pull latest code, rebuild, and restart the bot'),
+        )
         .toJSON(),
 ]
 

@@ -1,3 +1,4 @@
+import { execSync } from 'child_process'
 import { MessageFlags, PermissionFlagsBits, type ChatInputCommandInteraction } from 'discord.js'
 import { initObserverCache } from '../bot/observerCache'
 import { drainKickQueue } from '../services/kickQueue'
@@ -56,6 +57,41 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         await interaction.editReply(
             `Kick queue drained: ${result.success} succeeded, ${result.failed} still pending.`,
         )
+        return
+    }
+
+    if (sub === 'update') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+
+        let pull: string
+        try {
+            pull = execSync('git pull', { encoding: 'utf8', stdio: 'pipe' }).trim()
+        } catch (err: unknown) {
+            const e = err as { stderr?: string; message?: string }
+            const detail = (e.stderr || e.message || String(err)).slice(0, 1800)
+            await interaction.editReply(`git pull failed:\n\`\`\`\n${detail}\n\`\`\``)
+            return
+        }
+
+        if (pull === 'Already up to date.') {
+            await interaction.editReply('Already up to date.')
+            return
+        }
+
+        await interaction.editReply(`Pulled:\n\`\`\`\n${pull}\n\`\`\`\nInstalling and building...`)
+
+        try {
+            execSync('npm install', { encoding: 'utf8', stdio: 'pipe' })
+            execSync('npm run build', { encoding: 'utf8', stdio: 'pipe' })
+        } catch (err: unknown) {
+            const e = err as { stderr?: string; stdout?: string; message?: string }
+            const detail = (e.stderr || e.stdout || e.message || String(err)).slice(0, 1800)
+            await interaction.editReply(`Build failed:\n\`\`\`\n${detail}\n\`\`\``)
+            return
+        }
+
+        await interaction.editReply('Updated. Restarting...')
+        setTimeout(() => process.exit(0), 500)
         return
     }
 }
