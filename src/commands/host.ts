@@ -48,16 +48,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             return
         }
 
-        const isClaimer = claim.ownerId === interaction.user.id
-        const isGuildOwner = interaction.guild!.ownerId === interaction.user.id
-        if (!isClaimer && !isGuildOwner) {
-            await reply(
-                interaction,
-                'Only the person who claimed this server, or the server owner, can unclaim it.',
-            )
-            return
-        }
-
         unclaimGuild(interaction.client, interaction.guild!)
         await reply(interaction, 'This server is no longer a hearth circle gate.')
         return
