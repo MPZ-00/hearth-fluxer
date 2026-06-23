@@ -1,8 +1,9 @@
-import { Events, ActivityType } from 'discord.js'
+import { Events } from 'discord.js'
 import { config } from './config'
 import { db } from './db/client'
 import { hearthGuilds } from './db/schema'
 import { createClient } from './bot/client'
+import { startActivityRotation } from './bot/activity'
 import { handleInteractionCreate } from './bot/handlers/interactionCreate'
 import { handleGuildMemberAdd } from './bot/handlers/guildMemberAdd'
 import { handleGuildMemberRemove } from './bot/handlers/guildMemberRemove'
@@ -16,10 +17,10 @@ import { logger } from './logger'
 import { BOT_VERSION } from './version'
 
 const client = createClient()
+startActivityRotation(client)
 
 client.once(Events.ClientReady, async (c) => {
     logger.info(`Logged in as ${c.user.tag} — ${BOT_VERSION}`)
-    c.user.setActivity(BOT_VERSION, { type: ActivityType.Playing })
 
     if (config.HEARTH_GUILD_ID) {
         db.insert(hearthGuilds)
