@@ -5,3 +5,4 @@ data/hearth.db-shm
 data/hearth.db-wal
 .env
 *.js.map
+*.tmp
