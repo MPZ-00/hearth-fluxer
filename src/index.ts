@@ -6,6 +6,7 @@ import { createClient } from './bot/client'
 import { handleInteractionCreate } from './bot/handlers/interactionCreate'
 import { handleGuildMemberAdd } from './bot/handlers/guildMemberAdd'
 import { handleGuildMemberRemove } from './bot/handlers/guildMemberRemove'
+import { handleGuildDelete } from './bot/handlers/guildDelete'
 import { handlePresenceUpdate } from './bot/handlers/presenceUpdate'
 import { initInviteCache, trackInviteCreate, removeFromCache } from './bot/inviteCache'
 import { initObserverCache } from './bot/observerCache'
@@ -44,6 +45,7 @@ client.once(Events.ClientReady, async (c) => {
 client.on(Events.InteractionCreate, handleInteractionCreate)
 client.on(Events.GuildMemberAdd, handleGuildMemberAdd)
 client.on(Events.GuildMemberRemove, handleGuildMemberRemove)
+client.on(Events.GuildDelete, handleGuildDelete)
 client.on(Events.PresenceUpdate, handlePresenceUpdate)
 client.on(Events.InviteCreate, (invite) => {
     if (invite.guild) trackInviteCreate(invite.guild.id, invite.code)

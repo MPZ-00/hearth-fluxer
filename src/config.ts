@@ -28,7 +28,7 @@ loadEnv()
 export const config = {
     DISCORD_TOKEN: requireEnv('DISCORD_TOKEN'),
     CLIENT_ID: requireEnv('CLIENT_ID'),
-    HEARTH_GUILD_ID: requireEnv('HEARTH_GUILD_ID'),
+    HEARTH_GUILD_ID: process.env.HEARTH_GUILD_ID ?? '',
     DB_PATH: process.env.DB_PATH ?? './data/hearth.db',
     // Optional: guild to pull observer role from; defaults to hearth guild
     OBSERVER_GUILD_ID: process.env.OBSERVER_GUILD_ID ?? process.env.HEARTH_GUILD_ID ?? '',

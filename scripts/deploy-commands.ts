@@ -51,6 +51,21 @@ const commands = [
         .toJSON(),
 
     new SlashCommandBuilder()
+        .setName('host')
+        .setDescription('Use a server you control as your own hearth circle gate')
+        .addSubcommand((sub) =>
+            sub.setName('invite').setDescription('Get a link to add hearth to your own server'),
+        )
+        .addSubcommand((sub) =>
+            sub.setName('claim').setDescription('Register this server as a hearth circle gate'),
+        )
+        .addSubcommand((sub) =>
+            sub.setName('unclaim').setDescription('Stop using this server as a hearth circle gate'),
+        )
+        .setDMPermission(true)
+        .toJSON(),
+
+    new SlashCommandBuilder()
         .setName('help')
         .setDescription('Show available commands')
         .setDMPermission(true)

@@ -39,9 +39,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                 name: `${m('notify')} \`on\` / \`off\``,
                 value: 'Get a DM when a circle member activates hearth.',
             },
+            {
+                name: `${m('host')} \`invite\` / \`claim\` / \`unclaim\``,
+                value: 'Use a server you control as your own hearth circle gate, instead of the shared one.',
+            },
         )
         .setColor(0xe8735a)
-        .setFooter({ text: `hearth ${BOT_VERSION}` })
+        .setFooter({ text: `hearth ${BOT_VERSION} • Support: https://discord.gg/tA4tRYxcR6` })
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral })
 }

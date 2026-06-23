@@ -2,18 +2,24 @@ import type { GuildMember, PartialGuildMember } from 'discord.js'
 import { eq, and, or } from 'drizzle-orm'
 import { db } from '../../db/client'
 import { hearthGuilds, whitelist, users, pendingInvites } from '../../db/schema'
+import { pruneOrphanedGuildJoinEntries } from '../../services/whitelist'
 
 export async function handleGuildMemberRemove(member: GuildMember | PartialGuildMember) {
-    const isHearthGuild = db
-        .select({ guildId: hearthGuilds.guildId })
+    const hearthGuild = db
+        .select({ ownerId: hearthGuilds.ownerId })
         .from(hearthGuilds)
         .where(eq(hearthGuilds.guildId, member.guild.id))
         .get()
 
-    if (!isHearthGuild) return
+    if (!hearthGuild) return
 
-    // Remove all guild_join whitelist entries for this user from either side.
-    // Deleting by DB query (not guild.members.fetch) catches entries for already-departed members too.
+    if (hearthGuild.ownerId !== null) {
+        // Member may still share another hearth guild, so only drop now-orphaned entries.
+        pruneOrphanedGuildJoinEntries(member.client, member.id)
+        return
+    }
+
+    // Legacy guild is the only gate, so leaving it means losing it entirely.
     db.delete(whitelist)
         .where(
             and(
