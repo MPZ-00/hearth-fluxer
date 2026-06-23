@@ -26,6 +26,10 @@ Discord only syncs presence between users who share a server. Hearth manages a p
 
 If you enable `/notify on`, you'll get a DM when someone in your circle comes online.
 
+### Bring your own server
+
+Don't want to rely on the shared hearth server? Run `/host invite` to get a link that adds hearth to a server you already control, with zero permissions requested. The moment it joins, that server becomes its own private circle: anyone who's a member there and opted in with `/status on` is mutually visible to everyone else in it. No setup, no claiming step required.
+
 ### What hearth cannot do
 
 If you share other servers with someone, or they're on your friends list, Discord will still show them your status. Hearth controls who is in one private server, not Discord's presence system directly. For full invisibility, use Discord's built-in invisible mode.
@@ -39,7 +43,7 @@ If you share other servers with someone, or they're on your friends list, Discor
 - Node.js 22.12.0+
 - A Discord application with a bot user ([Discord Developer Portal](https://discord.com/developers/applications))
 - Privileged intents enabled in the portal: `Server Members Intent` and `Presence Intent`
-- A private Discord server to use as your hearth server
+- A private Discord server to use as your hearth server (optional - users can also bring their own via `/host`, see below)
 
 ### Installation
 
@@ -60,6 +64,8 @@ CLIENT_ID=your_application_id
 HEARTH_GUILD_ID=your_private_server_id
 DB_PATH=./data/hearth.db
 ```
+
+`HEARTH_GUILD_ID` is optional. Leave it unset if you only want users bringing their own server via `/host`.
 
 ### Running
 
@@ -82,12 +88,14 @@ https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&integration_type=1
 
 Replace `YOUR_CLIENT_ID` with your application ID from the [Developer Portal](https://discord.com/developers/applications). You can also generate this link from the portal under **Installation → Install Link**.
 
-### Setting up your hearth server
+### Setting up your hearth server (optional, shared mode)
 
 1. Create a new Discord server. Keep it private and disable the default invite link.
 2. Invite the bot (needs `Create Instant Invite` and `Kick Members` permissions).
 3. Copy the server ID into `HEARTH_GUILD_ID` in your `.env`.
 4. When someone runs `/status on`, the bot generates a one-time invite and sends it to them so they can join.
+
+Skip this section entirely if you'd rather have users bring their own server via `/host invite` (zero bot permissions required). Both modes can run side by side.
 
 ---
 
@@ -102,6 +110,9 @@ Replace `YOUR_CLIENT_ID` with your application ID from the [Developer Portal](ht
 | `/list` | Show your current circle |
 | `/notify on` | Get a DM when a circle member activates hearth |
 | `/notify off` | Turn off notifications |
+| `/host invite` | Get a zero-permission link to add hearth to a server you control |
+| `/host claim` | Manually register the current server as a circle gate (usually automatic) |
+| `/host unclaim` | Stop using the current server as a circle gate |
 
 ---
 
