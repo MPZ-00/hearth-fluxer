@@ -45,7 +45,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             },
         )
         .setColor(0xe8735a)
-        .setFooter({ text: `hearth ${BOT_VERSION} • Support: https://discord.gg/tA4tRYxcR6` })
+        .setFooter({
+            text: config.SUPPORT_SERVER_URL
+                ? `hearth ${BOT_VERSION} • Support: ${config.SUPPORT_SERVER_URL}`
+                : `hearth ${BOT_VERSION}`,
+        })
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral })
 }

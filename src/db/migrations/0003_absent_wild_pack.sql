@@ -1,0 +1,1 @@
+ALTER TABLE `hearth_guilds` DROP COLUMN `owner_id`;

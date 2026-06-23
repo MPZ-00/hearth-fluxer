@@ -4,26 +4,18 @@ import { db } from '../db/client'
 import { hearthGuilds } from '../db/schema'
 import { pruneOrphanedGuildJoinEntries } from './whitelist'
 
-export type ClaimResult =
-    | { status: 'claimed' }
-    | { status: 'already-claimed-by-you' }
-    | { status: 'already-claimed-by-other' }
-
-export function claimGuild(guildId: string, ownerId: string): ClaimResult {
-    const existing = db.select().from(hearthGuilds).where(eq(hearthGuilds.guildId, guildId)).get()
-
-    if (existing) {
-        return existing.ownerId === ownerId
-            ? { status: 'already-claimed-by-you' }
-            : { status: 'already-claimed-by-other' }
-    }
-
-    db.insert(hearthGuilds).values({ guildId, ownerId }).run()
-    return { status: 'claimed' }
+export function isClaimed(guildId: string): boolean {
+    return !!db
+        .select({ guildId: hearthGuilds.guildId })
+        .from(hearthGuilds)
+        .where(eq(hearthGuilds.guildId, guildId))
+        .get()
 }
 
-export function getClaim(guildId: string) {
-    return db.select().from(hearthGuilds).where(eq(hearthGuilds.guildId, guildId)).get()
+export function claimGuild(guildId: string): boolean {
+    if (isClaimed(guildId)) return false
+    db.insert(hearthGuilds).values({ guildId }).run()
+    return true
 }
 
 export function unclaimGuild(client: Client, guild: Guild) {

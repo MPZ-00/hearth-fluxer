@@ -37,4 +37,6 @@ export const config = {
     ADMIN_CHANNEL_ID: process.env.ADMIN_CHANNEL_ID ?? '',
     // Optional: guild to register /dev commands in (guild-scoped, instant)
     DEV_GUILD_ID: process.env.DEV_GUILD_ID ?? '',
+    // Optional: invite link for the official/support server, shown in /help
+    SUPPORT_SERVER_URL: process.env.SUPPORT_SERVER_URL ?? '',
 } as const

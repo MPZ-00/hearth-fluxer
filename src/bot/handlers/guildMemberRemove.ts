@@ -3,17 +3,18 @@ import { eq, and, or } from 'drizzle-orm'
 import { db } from '../../db/client'
 import { hearthGuilds, whitelist, users, pendingInvites } from '../../db/schema'
 import { pruneOrphanedGuildJoinEntries } from '../../services/whitelist'
+import { config } from '../../config'
 
 export async function handleGuildMemberRemove(member: GuildMember | PartialGuildMember) {
     const hearthGuild = db
-        .select({ ownerId: hearthGuilds.ownerId })
+        .select({ guildId: hearthGuilds.guildId })
         .from(hearthGuilds)
         .where(eq(hearthGuilds.guildId, member.guild.id))
         .get()
 
     if (!hearthGuild) return
 
-    if (hearthGuild.ownerId !== null) {
+    if (member.guild.id !== config.HEARTH_GUILD_ID) {
         // Member may still share another hearth guild, so only drop now-orphaned entries.
         pruneOrphanedGuildJoinEntries(member.client, member.id)
         return

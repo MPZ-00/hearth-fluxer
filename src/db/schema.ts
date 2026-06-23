@@ -38,10 +38,9 @@ export const whitelist = sqliteTable(
     ],
 )
 
-// One row per hearth guild. owner_id is null in self-hosted mode.
+// One row per hearth guild. The guild itself is the private pool; no ownership tracked.
 export const hearthGuilds = sqliteTable('hearth_guilds', {
     guildId: text('guild_id').primaryKey(),
-    ownerId: text('owner_id'),
     addedAt: integer('added_at')
         .notNull()
         .default(sql`(unixepoch())`),

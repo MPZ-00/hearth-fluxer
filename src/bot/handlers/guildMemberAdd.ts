@@ -7,6 +7,7 @@ import { notifyCircle } from '../../services/notification'
 import { enqueueKick } from '../../services/kickQueue'
 import { updateInviteCache } from '../inviteCache'
 import { logger } from '../../logger'
+import { config } from '../../config'
 
 // Bot-issued one-time invites need verifying against abuse; returns false if the
 // join should be rejected (and kicks the member).
@@ -50,15 +51,15 @@ async function verifyLegacyJoin(member: GuildMember): Promise<boolean> {
 
 export async function handleGuildMemberAdd(member: GuildMember) {
     const hearthGuild = db
-        .select({ ownerId: hearthGuilds.ownerId })
+        .select({ guildId: hearthGuilds.guildId })
         .from(hearthGuilds)
         .where(eq(hearthGuilds.guildId, member.guild.id))
         .get()
 
     if (!hearthGuild) return
 
-    // Claimed guilds use the owner's own invites, so only the legacy shared guild needs verifying.
-    if (hearthGuild.ownerId === null) {
+    // Claimed/auto-claimed guilds use the owner's own invites, so only the legacy shared guild needs verifying.
+    if (member.guild.id === config.HEARTH_GUILD_ID) {
         const verified = await verifyLegacyJoin(member)
         if (!verified) return
     }
