@@ -3,7 +3,7 @@
   <br><br>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg" alt="Node.js 22.12+">
-  <a href="https://discord.gg/qsTAU7Vyfz"><img src="https://img.shields.io/badge/discord-dev%20server-5865F2?logo=discord&logoColor=white" alt="Discord dev server"></a>
+  <a href="https://discord.gg/qsTAU7Vyfz"><img src="https://img.shields.io/badge/discord-Hearths%20Development-5865F2?logo=discord&logoColor=white" alt="Discord dev server"></a>
   <br><br>
   <a href="https://discord.com/oauth2/authorize?client_id=1511033910933458994&integration_type=1&scope=applications.commands">
     <img src="https://img.shields.io/badge/add%20to%20discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Add to Discord">
