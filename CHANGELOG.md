@@ -1,6 +1,26 @@
 # Changelog
 
-All notable changes to hearth are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to hearth-fluxer are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+
+Entries from 0.3.0 down are inherited from [hearth](https://github.com/MPZ-00/hearth), the discord.js project this repo was forked from. See PORTING.md for what changed in the fork itself.
+
+## [0.1.0-alpha] - 2026-07-03
+
+Initial public snapshot of the Fluxer port. Not usable as a working bot yet, see "Known limitations" below.
+
+### Added
+
+- Fluxer REST and gateway client (`src/fluxer/`), built from scratch since no official Fluxer SDK exists. Opcodes, dispatch event names, and REST endpoint shapes verified directly against fluxerapp/fluxer source
+- Client, activity rotation, and entrypoint wiring ported to the new Fluxer client
+- Gateway event handlers (guild create/delete, member add/remove, presence update) and caches ported to Fluxer REST calls, replacing discord.js's local member cache with direct API lookups
+- Service layer (status, kick queue, notifications, host claiming, whitelist) ported to `FluxerClient`
+- `PORTING.md`, a living reference separating confirmed Fluxer API details from Discord-parity assumptions still needing verification
+
+### Known limitations
+
+- Slash commands don't work. Fluxer has no interaction/slash-command system yet, so `/status`, `/add`, `/remove`, `/list`, `/notify`, `/host`, and `/help` aren't reachable. The original command logic is parked in `src/commands/` (excluded from the build) pending Fluxer's own command API
+- Several REST endpoints are unverified Discord-parity guesses: guild invite listing, user lookup, DM creation, message sending, and the invite URL format. See "Assumed" in `PORTING.md`
+- `scripts/setup-server.ts` still targets Discord's API directly and needs its own rewrite
 
 ## [0.3.0] - 2026-06-23
 
