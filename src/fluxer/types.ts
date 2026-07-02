@@ -123,6 +123,19 @@ export interface FluxerMessage {
     content: string
 }
 
+// Confirmed: packages/schema/src/domains/message/MessageResponseSchemas.ts
+// list_pinned_messages returns a paginated wrapper, not a bare array (initial "confirmed"
+// entry for this endpoint only checked that the route existed, not this response shape).
+export interface FluxerChannelPin {
+    message: FluxerMessage
+    pinned_at: string
+}
+
+export interface FluxerChannelPinsResponse {
+    items: FluxerChannelPin[]
+    has_more: boolean
+}
+
 // Confirmed exact strings: fluxer_api/src/api/constants/Gateway.ts
 export type GatewayDispatchEvent =
     | 'READY'

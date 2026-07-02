@@ -3,6 +3,7 @@ import type {
     CreateGuildChannelBody,
     CreateGuildRoleBody,
     FluxerChannel,
+    FluxerChannelPinsResponse,
     FluxerGuild,
     FluxerGuildInvite,
     FluxerGuildMember,
@@ -145,8 +146,12 @@ export class FluxerRest {
     }
 
     // confirmed: fluxer_api/src/api/channel/controllers/MessageInteractionController.ts
+    // Returns a paginated wrapper ({items, has_more}), not a bare array.
     listPinnedMessages(channelId: string) {
-        return this.request<FluxerMessage[]>('GET', `/channels/${channelId}/messages/pins`)
+        return this.request<FluxerChannelPinsResponse>(
+            'GET',
+            `/channels/${channelId}/messages/pins`,
+        )
     }
 
     // confirmed
