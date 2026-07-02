@@ -1,31 +1,33 @@
-import type { Client } from 'discord.js'
+import type { FluxerClient } from './client'
 import { logger } from '../logger'
 
 const observers = new Set<string>()
 
 export async function initObserverCache(
-    client: Client,
+    client: FluxerClient,
     guildId: string,
     roleName: string,
 ): Promise<void> {
     if (!guildId) return
-    const guild = client.guilds.cache.get(guildId)
-    if (!guild) {
-        logger.warn(`Observer cache: guild ${guildId} not in cache`)
-        return
-    }
     try {
-        const members = await guild.members.fetch()
+        // Members carry role IDs, not names, so resolve the target role ID first.
+        const roles = await client.rest.listGuildRoles(guildId)
+        const role = roles.find((r) => r.name.toLowerCase() === roleName.toLowerCase())
+        if (!role) {
+            logger.warn(`Observer cache: no role named "${roleName}" in guild ${guildId}`)
+            observers.clear()
+            return
+        }
+
+        const members = await client.rest.listGuildMembers(guildId)
         observers.clear()
-        for (const [, member] of members) {
-            if (member.roles.cache.some((r) => r.name.toLowerCase() === roleName.toLowerCase())) {
-                observers.add(member.id)
-            }
+        for (const member of members) {
+            if (member.roles.includes(role.id)) observers.add(member.user.id)
         }
         logger.info(`Observer cache: ${observers.size} user(s) with role "${roleName}"`)
         for (const id of observers) {
-            const member = guild.members.cache.get(id)
-            logger.debug(`  observer: ${member?.user.tag ?? id}`)
+            const member = members.find((m) => m.user.id === id)
+            logger.debug(`  observer: ${member?.user.username ?? id}`)
         }
     } catch (err) {
         logger.warn('Observer cache: could not fetch members:', err)

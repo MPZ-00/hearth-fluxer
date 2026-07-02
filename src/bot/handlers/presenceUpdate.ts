@@ -1,4 +1,5 @@
-import type { Presence } from 'discord.js'
+import type { FluxerClient } from '../client'
+import type { PresenceUpdateDispatch } from '../../fluxer/types'
 import { eq } from 'drizzle-orm'
 import { db } from '../../db/client'
 import { presenceCache, users } from '../../db/schema'
@@ -9,20 +10,19 @@ import { logger } from '../../logger'
 
 type PresenceStatus = 'online' | 'idle' | 'dnd' | 'offline'
 
-export async function handlePresenceUpdate(oldPresence: Presence | null, newPresence: Presence) {
-    const userId = newPresence.userId
-    const newStatus = (newPresence.status ?? 'offline') as PresenceStatus
+export async function handlePresenceUpdate(client: FluxerClient, presence: PresenceUpdateDispatch) {
+    const userId = presence.user.id
+    const newStatus = (presence.status ?? 'offline') as PresenceStatus
 
     const user = db.select().from(users).where(eq(users.id, userId)).get()
 
     const cached = db.select().from(presenceCache).where(eq(presenceCache.userId, userId)).get()
-    const oldStatus = (cached?.status ?? oldPresence?.status ?? 'offline') as PresenceStatus
+    const oldStatus = (cached?.status ?? 'offline') as PresenceStatus
 
     if (isObserver(userId)) {
         const watchers = user?.optedIn ? getNotifyWatchers(userId).length : 0
-        const name = newPresence.user?.displayName ?? userId
         logger.debug(
-            `presence [${name}] ${oldStatus} → ${newStatus}` +
+            `presence [${userId}] ${oldStatus} → ${newStatus}` +
                 ` | opted_in=${user?.optedIn ?? false}` +
                 ` | notify_watchers=${watchers}` +
                 ` | will_notify=${user?.optedIn && oldStatus === 'offline' && newStatus === 'online'}`,
@@ -46,7 +46,9 @@ export async function handlePresenceUpdate(oldPresence: Presence | null, newPres
 
     // Notify circle watchers only on offline-to-online transition
     if (oldStatus === 'offline' && newStatus === 'online') {
-        const displayName = newPresence.user?.displayName ?? userId
-        await notifyCircle(newPresence.client, userId, displayName)
+        // No cached display name from the presence payload alone, so fall back to REST.
+        const fetchedUser = await client.rest.getUser(userId).catch(() => null)
+        const displayName = fetchedUser?.global_name ?? fetchedUser?.username ?? userId
+        await notifyCircle(client, userId, displayName)
     }
 }
