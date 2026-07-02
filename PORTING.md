@@ -36,7 +36,10 @@ confirmed from what's assumed so nobody mistakes a guess for a fact later.
   - `GET /guilds/:guild_id/channels` and `POST /guilds/:guild_id/channels`
     (discriminated union on `type`, with `parent_id` and `permission_overwrites`),
     in `GuildChannelController.ts`
-  - `GET /channels/:channel_id/messages/pins` and
+  - `GET /channels/:channel_id/messages/pins` (returns a paginated wrapper,
+    `{items: [{message, pinned_at}], has_more}`, not a bare array, this bit
+    the first version of `setup-server.ts` because the route's existence was
+    checked but not its actual response schema) and
     `PUT /channels/:channel_id/pins/:message_id`, in
     `MessageInteractionController.ts`
   - `POST /channels/:channel_id/invites` (body: `max_uses`, `max_age`, `unique`,

@@ -228,9 +228,9 @@ async function pinOrUpdate(
     content: string,
 ): Promise<void> {
     const pins = await rest.listPinnedMessages(channel.id)
-    const mine = pins.find((m) => m.author.id === botId)
+    const mine = pins.items.find((p) => p.message.author.id === botId)
     if (mine) {
-        await rest.editMessage(channel.id, mine.id, content)
+        await rest.editMessage(channel.id, mine.message.id, content)
     } else {
         const msg = await rest.sendMessage(channel.id, content)
         await rest.pinMessage(channel.id, msg.id)
@@ -393,11 +393,11 @@ For reproducible bugs, post in <#${bugReports.id}>.`
     await pinOrUpdate(rest, bugReports, botId, M.bugReportTemplate)
 
     const annPins = await rest.listPinnedMessages(announcements.id)
-    if (annPins.length === 0)
+    if (annPins.items.length === 0)
         await rest.sendMessage(announcements.id, 'Announcements will appear here.')
 
     const showcasePins = await rest.listPinnedMessages(showcase.id)
-    if (showcasePins.length === 0) await rest.sendMessage(showcase.id, M.showcase)
+    if (showcasePins.items.length === 0) await rest.sendMessage(showcase.id, M.showcase)
 
     const guild = await rest.getGuild(guildId)
     const ownerMember = await rest.getGuildMember(guildId, guild.owner_id)
