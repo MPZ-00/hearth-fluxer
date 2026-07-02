@@ -42,6 +42,87 @@ export interface GatewayBotInfo {
     shards?: number
 }
 
+export interface FluxerGuild {
+    id: string
+    name: string
+    owner_id: string
+}
+
+export interface FluxerRole {
+    id: string
+    name: string
+    color: number
+    permissions: string // bigint, serialized as a string
+    hoist: boolean
+    position: number
+}
+
+// Confirmed exact bit positions: packages/constants/src/ChannelConstants.ts. Same shift
+// amounts as Discord's PermissionFlagsBits, but that's read off Fluxer's own source, not
+// assumed. Only the bits setup-server.ts actually needs are listed here.
+export const FluxerPermissions = {
+    CREATE_INSTANT_INVITE: 1n << 0n,
+    KICK_MEMBERS: 1n << 1n,
+    ADMINISTRATOR: 1n << 3n,
+    MANAGE_CHANNELS: 1n << 4n,
+    MANAGE_GUILD: 1n << 5n,
+    VIEW_CHANNEL: 1n << 10n,
+    SEND_MESSAGES: 1n << 11n,
+    MANAGE_MESSAGES: 1n << 13n,
+    EMBED_LINKS: 1n << 14n,
+    READ_MESSAGE_HISTORY: 1n << 16n,
+    MANAGE_ROLES: 1n << 28n,
+    MODERATE_MEMBERS: 1n << 40n,
+} as const
+
+export interface CreateGuildRoleBody {
+    name: string
+    color?: number
+    permissions?: string
+}
+
+export interface UpdateGuildRoleBody {
+    name?: string
+    color?: number
+    permissions?: string
+    hoist?: boolean
+    mentionable?: boolean
+}
+
+// Confirmed: packages/constants/src/ChannelConstants.ts ChannelTypes enum
+export const FluxerChannelTypes = {
+    GUILD_TEXT: 0,
+    GUILD_VOICE: 2,
+    GUILD_CATEGORY: 4,
+} as const
+
+export interface FluxerChannelOverwrite {
+    id: string
+    type: 0 | 1 // 0 = role, 1 = member
+    allow?: string
+    deny?: string
+}
+
+export interface FluxerChannel {
+    id: string
+    name?: string
+    type: number
+    parent_id?: string | null
+}
+
+export interface CreateGuildChannelBody {
+    type: (typeof FluxerChannelTypes)[keyof typeof FluxerChannelTypes]
+    name: string
+    parent_id?: string
+    permission_overwrites?: FluxerChannelOverwrite[]
+}
+
+export interface FluxerMessage {
+    id: string
+    author: FluxerUser
+    content: string
+}
+
 // Confirmed exact strings: fluxer_api/src/api/constants/Gateway.ts
 export type GatewayDispatchEvent =
     | 'READY'

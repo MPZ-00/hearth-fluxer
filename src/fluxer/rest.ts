@@ -1,9 +1,16 @@
 import type {
     CreateChannelInviteBody,
+    CreateGuildChannelBody,
+    CreateGuildRoleBody,
+    FluxerChannel,
+    FluxerGuild,
     FluxerGuildInvite,
     FluxerGuildMember,
+    FluxerMessage,
+    FluxerRole,
     FluxerUser,
     GatewayBotInfo,
+    UpdateGuildRoleBody,
 } from './types'
 
 export class FluxerApiError extends Error {
@@ -100,9 +107,62 @@ export class FluxerRest {
         return this.request<FluxerGuildInvite[]>('GET', `/guilds/${guildId}/invites`)
     }
 
+    // confirmed: fluxer_api/src/api/guild/controllers/GuildBaseController.ts
+    getGuild(guildId: string) {
+        return this.request<FluxerGuild>('GET', `/guilds/${guildId}`)
+    }
+
     // confirmed: fluxer_api/src/api/guild/controllers/GuildRoleController.ts
     listGuildRoles(guildId: string) {
-        return this.request<{ id: string; name: string }[]>('GET', `/guilds/${guildId}/roles`)
+        return this.request<FluxerRole[]>('GET', `/guilds/${guildId}/roles`)
+    }
+
+    // confirmed
+    createGuildRole(guildId: string, body: CreateGuildRoleBody) {
+        return this.request<FluxerRole>('POST', `/guilds/${guildId}/roles`, { body })
+    }
+
+    // confirmed
+    updateGuildRole(guildId: string, roleId: string, body: UpdateGuildRoleBody) {
+        return this.request<FluxerRole>('PATCH', `/guilds/${guildId}/roles/${roleId}`, { body })
+    }
+
+    // confirmed: fluxer_api/src/api/guild/controllers/GuildChannelController.ts
+    listGuildChannels(guildId: string) {
+        return this.request<FluxerChannel[]>('GET', `/guilds/${guildId}/channels`)
+    }
+
+    // confirmed
+    createGuildChannel(guildId: string, body: CreateGuildChannelBody) {
+        return this.request<FluxerChannel>('POST', `/guilds/${guildId}/channels`, { body })
+    }
+
+    // confirmed: fluxer_api/src/api/guild/controllers/GuildMemberController.ts
+    addGuildMemberRole(guildId: string, userId: string, roleId: string, reason?: string) {
+        return this.request<void>('PUT', `/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+            reason,
+        })
+    }
+
+    // confirmed: fluxer_api/src/api/channel/controllers/MessageInteractionController.ts
+    listPinnedMessages(channelId: string) {
+        return this.request<FluxerMessage[]>('GET', `/channels/${channelId}/messages/pins`)
+    }
+
+    // confirmed
+    pinMessage(channelId: string, messageId: string) {
+        return this.request<void>('PUT', `/channels/${channelId}/pins/${messageId}`)
+    }
+
+    // ASSUMED (Discord-parity, unverified): message edit endpoint
+    editMessage(channelId: string, messageId: string, content: string) {
+        return this.request<FluxerMessage>(
+            'PATCH',
+            `/channels/${channelId}/messages/${messageId}`,
+            {
+                body: { content },
+            },
+        )
     }
 
     // ASSUMED (Discord-parity, unverified)
@@ -119,7 +179,7 @@ export class FluxerRest {
 
     // ASSUMED (Discord-parity, unverified): message send is proxied to fluxer_messages service
     sendMessage(channelId: string, content: string) {
-        return this.request<{ id: string }>('POST', `/channels/${channelId}/messages`, {
+        return this.request<FluxerMessage>('POST', `/channels/${channelId}/messages`, {
             body: { content },
         })
     }
