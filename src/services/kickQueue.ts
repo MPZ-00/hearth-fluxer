@@ -1,4 +1,4 @@
-import type { Client } from 'discord.js'
+import type { FluxerClient } from '../bot/client'
 import { eq, and, or } from 'drizzle-orm'
 import { db } from '../db/client'
 import { kickQueue, whitelist, users } from '../db/schema'
@@ -7,24 +7,23 @@ import { config } from '../config'
 
 const MAX_ATTEMPTS = 5
 
-async function notifyAdmin(client: Client, message: string): Promise<void> {
+async function notifyAdmin(client: FluxerClient, message: string): Promise<void> {
     if (!config.ADMIN_CHANNEL_ID) return
     try {
-        const ch = await client.channels.fetch(config.ADMIN_CHANNEL_ID)
-        if (ch?.isSendable()) await ch.send(message)
+        await client.rest.sendMessage(config.ADMIN_CHANNEL_ID, message)
     } catch (err) {
         logger.error('Could not send admin alert:', err)
     }
 }
 
 export async function enqueueKick(
-    client: Client,
+    client: FluxerClient,
     userId: string,
     guildId: string,
     reason: string,
 ): Promise<void> {
     db.insert(kickQueue).values({ userId, guildId, reason }).run()
-    logger.warn(`Kick queued for ${userId} — bot may be missing Kick Members permission`)
+    logger.warn(`Kick queued for ${userId}, bot may be missing Kick Members permission`)
     await notifyAdmin(
         client,
         `⚠️ Failed to kick <@${userId}> from the hearth guild.\n` +
@@ -48,7 +47,9 @@ function cleanupGhostUser(userId: string): void {
         .run()
 }
 
-export async function drainKickQueue(client: Client): Promise<{ success: number; failed: number }> {
+export async function drainKickQueue(
+    client: FluxerClient,
+): Promise<{ success: number; failed: number }> {
     const pending = db.select().from(kickQueue).all()
     if (pending.length === 0) return { success: 0, failed: 0 }
 
@@ -56,30 +57,19 @@ export async function drainKickQueue(client: Client): Promise<{ success: number;
     let failed = 0
 
     for (const entry of pending) {
-        const guild = client.guilds.cache.get(entry.guildId)
-        if (!guild) {
-            // Guild not in cache yet (e.g. startup race); count attempts so queue-status is honest
-            db.update(kickQueue)
-                .set({ attempts: entry.attempts + 1 })
-                .where(eq(kickQueue.id, entry.id))
-                .run()
-            failed++
-            continue
-        }
-
         try {
-            const member = await guild.members.fetch(entry.userId).catch(() => null)
+            const exists = await client.rest.hasGuildMember(entry.guildId, entry.userId)
 
-            if (!member) {
+            if (!exists) {
                 // Member already left; clean up the ghost state they left behind
                 cleanupGhostUser(entry.userId)
                 db.delete(kickQueue).where(eq(kickQueue.id, entry.id)).run()
-                logger.info(`Kick queue: ${entry.userId} already gone — cleaned up ghost state`)
+                logger.info(`Kick queue: ${entry.userId} already gone, cleaned up ghost state`)
                 success++
                 continue
             }
 
-            await member.kick(entry.reason)
+            await client.rest.kickGuildMember(entry.guildId, entry.userId, entry.reason)
             db.delete(kickQueue).where(eq(kickQueue.id, entry.id)).run()
             logger.info(`Kick queue: kicked ${entry.userId}`)
             success++
@@ -88,7 +78,7 @@ export async function drainKickQueue(client: Client): Promise<{ success: number;
             if (newAttempts >= MAX_ATTEMPTS) {
                 db.delete(kickQueue).where(eq(kickQueue.id, entry.id)).run()
                 logger.error(
-                    `Kick queue: giving up on ${entry.userId} after ${MAX_ATTEMPTS} attempts — manual action required`,
+                    `Kick queue: giving up on ${entry.userId} after ${MAX_ATTEMPTS} attempts, manual action required`,
                 )
                 await notifyAdmin(
                     client,

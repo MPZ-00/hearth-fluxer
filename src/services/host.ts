@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import type { Client, Guild } from 'discord.js'
+import type { FluxerClient } from '../bot/client'
 import { db } from '../db/client'
 import { hearthGuilds } from '../db/schema'
 import { pruneOrphanedGuildJoinEntries } from './whitelist'
@@ -18,10 +18,11 @@ export function claimGuild(guildId: string): boolean {
     return true
 }
 
-export function unclaimGuild(client: Client, guild: Guild) {
-    const memberIds = [...guild.members.cache.keys()]
-    db.delete(hearthGuilds).where(eq(hearthGuilds.guildId, guild.id)).run()
+export async function unclaimGuild(client: FluxerClient, guildId: string) {
+    const members = await client.rest.listGuildMembers(guildId).catch(() => [])
+    const memberIds = members.map((m) => m.user.id)
+    db.delete(hearthGuilds).where(eq(hearthGuilds.guildId, guildId)).run()
     for (const memberId of memberIds) {
-        pruneOrphanedGuildJoinEntries(client, memberId)
+        await pruneOrphanedGuildJoinEntries(client, memberId)
     }
 }

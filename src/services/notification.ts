@@ -1,8 +1,9 @@
-import type { Client } from 'discord.js'
+import type { FluxerClient } from '../bot/client'
 import { getNotifyWatchers } from './whitelist'
 import { logger } from '../logger'
 
-export async function notifyCircle(client: Client, userId: string, displayName: string) {
+// ASSUMED (Discord-parity, unverified): DM channel creation + message send shapes, see PORTING.md
+export async function notifyCircle(client: FluxerClient, userId: string, displayName: string) {
     const watchers = getNotifyWatchers(userId)
     if (watchers.length === 0) return
 
@@ -11,9 +12,9 @@ export async function notifyCircle(client: Client, userId: string, displayName: 
     await Promise.allSettled(
         watchers.map(async ({ ownerId }) => {
             try {
-                const user = await client.users.fetch(ownerId)
-                await user.send(`✶ \`${displayName}\` is here for you.`)
-                logger.debug(`notifyCircle: DM sent to ${user.tag}`)
+                const dm = await client.rest.createDM(ownerId)
+                await client.rest.sendMessage(dm.id, `✶ \`${displayName}\` is here for you.`)
+                logger.debug(`notifyCircle: DM sent to ${ownerId}`)
             } catch (err) {
                 logger.warn(`notifyCircle: DM failed for ${ownerId}:`, err)
             }

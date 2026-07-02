@@ -1,5 +1,5 @@
 import { eq, and, or } from 'drizzle-orm'
-import type { Client } from 'discord.js'
+import type { FluxerClient } from '../bot/client'
 import { db } from '../db/client'
 import { users, whitelist, hearthGuilds } from '../db/schema'
 import { upsertUser } from '../db/helpers'
@@ -59,8 +59,11 @@ export function isInCircle(ownerId: string, memberId: string): boolean {
  * Removes guild_join entries for memberId where the other party is no longer
  * co-located with them in any hearth guild (legacy shared guild or a claimed one).
  * Used when a member leaves a claimed guild, since they may still share another.
+ *
+ * Discord.js served this from a local member cache; without one here, co-location
+ * is re-checked over REST per candidate guild (getGuildMember, 404 = not present).
  */
-export function pruneOrphanedGuildJoinEntries(client: Client, memberId: string) {
+export async function pruneOrphanedGuildJoinEntries(client: FluxerClient, memberId: string) {
     const entries = db
         .select()
         .from(whitelist)
@@ -80,15 +83,20 @@ export function pruneOrphanedGuildJoinEntries(client: Client, memberId: string) 
         .all()
         .map((g) => g.guildId)
 
-    const stillCoLocated = (otherId: string) =>
-        allGuildIds.some((guildId) => {
-            const cache = client.guilds.cache.get(guildId)?.members.cache
-            return cache?.has(memberId) && cache?.has(otherId)
-        })
+    const stillCoLocated = async (otherId: string) => {
+        for (const guildId of allGuildIds) {
+            const [memberHere, otherHere] = await Promise.all([
+                client.rest.hasGuildMember(guildId, memberId),
+                client.rest.hasGuildMember(guildId, otherId),
+            ])
+            if (memberHere && otherHere) return true
+        }
+        return false
+    }
 
     for (const entry of entries) {
         const otherId = entry.ownerId === memberId ? entry.memberId : entry.ownerId
-        if (!stillCoLocated(otherId)) {
+        if (!(await stillCoLocated(otherId))) {
             db.delete(whitelist)
                 .where(
                     and(
@@ -104,7 +112,7 @@ export function pruneOrphanedGuildJoinEntries(client: Client, memberId: string) 
 
 /**
  * Returns users who have notify=true and explicitly added memberId via /add.
- * guild_join entries are excluded — auto-mutual connections don't imply notification consent.
+ * guild_join entries are excluded: auto-mutual connections don't imply notification consent.
  */
 export function getNotifyWatchers(memberId: string) {
     return db
