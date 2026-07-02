@@ -1,0 +1,9 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "..",
+        "noEmit": true
+    },
+    "include": ["**/*.ts", "../src/fluxer/**/*.ts", "../src/config.ts", "../src/logger.ts"],
+    "exclude": ["../node_modules", "deploy-commands.ts", "deploy-dev-commands.ts"]
+}

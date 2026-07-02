@@ -1,9 +1,14 @@
 /**
- * Server setup script. Safe to re-run: existing channels are skipped and pinned messages are
- * edited in place rather than creating duplicates.
+ * Server setup script. Safe to re-run: existing channels/roles are matched by exact name and
+ * reused rather than duplicated, and pinned messages are edited in place. Roles/channels found
+ * by name are reused as-is though, their color/permissions/overwrites are not retrofitted to
+ * match this script's expectations if they already existed under a different configuration
+ * (e.g. from a Discord server template import).
+ *
  * Usage:
- *   tsx scripts/setup-server.ts official <GUILD_ID>
- *   tsx scripts/setup-server.ts dev <GUILD_ID>
+ *   npm run setup:official -- <GUILD_ID>
+ *   npm run setup:dev -- <GUILD_ID>
+ *   tsx scripts/setup-server.ts <official|dev> <GUILD_ID>
  */
 
 // TODO(fluxer-commands): command-mention formatting (fetchCommandMap/s()) is parked pending
@@ -24,10 +29,43 @@ import { config } from '../src/config'
 // Args
 // ---------------------------------------------------------------------------
 
-const [, , serverType, guildId] = process.argv
+function printHelp(): void {
+    console.log(`Server setup script for hearth-fluxer.
+
+Creates (or reuses, if already present under the exact same name) the roles,
+categories, channels, and pinned messages for a hearth server on Fluxer.
+
+Usage:
+  tsx scripts/setup-server.ts <official|dev> <GUILD_ID>
+  npm run setup:official -- <GUILD_ID>
+  npm run setup:dev -- <GUILD_ID>
+
+Arguments:
+  official|dev   Which server layout to set up
+  GUILD_ID       The Fluxer guild (server) ID to configure
+
+Options:
+  -h, --help     Show this help and exit
+
+Notes:
+  - Safe to re-run: existing roles/channels are matched by exact name and reused.
+  - Reused roles/channels are NOT updated to match this script's expected color,
+    permissions, or overwrites, only newly-created ones are configured that way.
+  - Requires FLUXER_TOKEN and CLIENT_ID in .env (see .env.example).`)
+}
+
+const args = process.argv.slice(2)
+
+if (args.includes('-h') || args.includes('--help')) {
+    printHelp()
+    process.exit(0)
+}
+
+const [serverType, guildId] = args
 
 if ((serverType !== 'official' && serverType !== 'dev') || !guildId) {
     console.error('Usage: tsx scripts/setup-server.ts <official|dev> <GUILD_ID>')
+    console.error('Run with --help for details.')
     process.exit(1)
 }
 
@@ -125,7 +163,12 @@ async function getOrCreateRole(
     rest: FluxerRest,
     guildId: string,
     existingRoles: FluxerRole[],
-    options: { name: string; color: number; hoist?: boolean; permissions?: bigint },
+    options: {
+        name: string
+        color: number
+        hoist?: boolean
+        permissions?: bigint
+    },
 ): Promise<FluxerRole> {
     const existing = existingRoles.find((r) => r.name === options.name)
     if (existing) return existing
@@ -196,14 +239,26 @@ async function pinOrUpdate(
 
 function readonlyOverwrites(everyoneId: string, writerRoleId: string): FluxerChannelOverwrite[] {
     return [
-        { id: everyoneId, type: 0, deny: FluxerPermissions.SEND_MESSAGES.toString() },
-        { id: writerRoleId, type: 0, allow: FluxerPermissions.SEND_MESSAGES.toString() },
+        {
+            id: everyoneId,
+            type: 0,
+            deny: FluxerPermissions.SEND_MESSAGES.toString(),
+        },
+        {
+            id: writerRoleId,
+            type: 0,
+            allow: FluxerPermissions.SEND_MESSAGES.toString(),
+        },
     ]
 }
 
 function staffOnlyOverwrites(everyoneId: string, staffRoleId: string): FluxerChannelOverwrite[] {
     return [
-        { id: everyoneId, type: 0, deny: FluxerPermissions.VIEW_CHANNEL.toString() },
+        {
+            id: everyoneId,
+            type: 0,
+            deny: FluxerPermissions.VIEW_CHANNEL.toString(),
+        },
         {
             id: staffRoleId,
             type: 0,
@@ -244,7 +299,10 @@ async function setupOfficial(rest: FluxerRest, guildId: string, botId: string) {
             FluxerPermissions.KICK_MEMBERS |
             FluxerPermissions.MODERATE_MEMBERS,
     })
-    await getOrCreateRole(rest, guildId, roles, { name: 'ember', color: C.warmOrange })
+    await getOrCreateRole(rest, guildId, roles, {
+        name: 'ember',
+        color: C.warmOrange,
+    })
     await getOrCreateRole(rest, guildId, roles, { name: 'guest', color: C.ash })
     await getOrCreateRole(rest, guildId, roles, {
         name: 'hearth',
@@ -377,8 +435,14 @@ async function setupDev(rest: FluxerRest, guildId: string, botId: string) {
         hoist: true,
         permissions: FluxerPermissions.MANAGE_MESSAGES,
     })
-    await getOrCreateRole(rest, guildId, roles, { name: 'spark', color: C.warmOrange })
-    await getOrCreateRole(rest, guildId, roles, { name: 'tester', color: C.coolGrey })
+    await getOrCreateRole(rest, guildId, roles, {
+        name: 'spark',
+        color: C.warmOrange,
+    })
+    await getOrCreateRole(rest, guildId, roles, {
+        name: 'tester',
+        color: C.coolGrey,
+    })
     await getOrCreateRole(rest, guildId, roles, {
         name: 'hearth [dev]',
         color: C.ashGrey,
