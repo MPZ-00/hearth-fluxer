@@ -3,26 +3,33 @@
   <br><br>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg" alt="Node.js 22.12+">
-  <a href="https://discord.gg/qsTAU7Vyfz"><img src="https://img.shields.io/badge/discord-Hearths%20Development-5865F2?logo=discord&logoColor=white" alt="Discord dev server"></a>
-  <br><br>
-  <a href="https://discord.com/oauth2/authorize?client_id=1511033910933458994&integration_type=1&scope=applications.commands">
-    <img src="https://img.shields.io/badge/add%20to%20discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Add to Discord">
-  </a>
   <br><br>
   <em>Appear online only to your support circle. Invisible to everyone else.</em>
 </div>
 
 ---
 
+> **This is a Fluxer port of [hearth](https://github.com/MPZ-00/hearth)**, forked rather than
+> built as a shared abstraction. Fluxer has no official docs or client SDK yet, everything this
+> bot relies on was verified directly against the [fluxerapp/fluxer](https://github.com/fluxerapp/fluxer)
+> source. Read **[PORTING.md](PORTING.md)** for what's confirmed vs. assumed.
+>
+> **Slash commands don't work yet.** Fluxer has no interaction/slash-command system as of this
+> writing, so the commands described below aren't reachable in-app. The rest of this README
+> describes hearth's intended behavior, parked and waiting on Fluxer's own command API. Once
+> that lands, this note is the only thing that needs updating.
+
+---
+
 ## What is hearth?
 
-Discord shows your status to everyone you share a server with, and to all your friends. There's no built-in way to say "I'm here, but only for certain people."
+Fluxer shows your status to everyone you share a server with, and to all your friends. There's no built-in way to say "I'm here, but only for certain people."
 
 Hearth fixes that. Turn it on and you're visible to a small circle you choose. To everyone else, you look offline.
 
 ## How it works
 
-Discord only syncs presence between users who share a server. Hearth manages a private server whose membership is your circle. Run `/status on` and the bot sends you a one-time invite to join. Once you're in, your circle members can see your real status natively. Run `/status off` and the bot removes you from the server. You disappear.
+Fluxer only syncs presence between users who share a server. Hearth manages a private server whose membership is your circle. Run `/status on` and the bot sends you a one-time invite to join. Once you're in, your circle members can see your real status natively. Run `/status off` and the bot removes you from the server. You disappear.
 
 If you enable `/notify on`, you'll get a DM when someone in your circle comes online.
 
@@ -32,7 +39,7 @@ Don't want to rely on the shared hearth server? Run `/host invite` to get a link
 
 ### What hearth cannot do
 
-If you share other servers with someone, or they're on your friends list, Discord will still show them your status. Hearth controls who is in one private server, not Discord's presence system directly. For full invisibility, use Discord's built-in invisible mode.
+If you share other servers with someone, or they're on your friends list, Fluxer will still show them your status. Hearth controls who is in one private server, not Fluxer's presence system directly. For full invisibility, use Fluxer's built-in invisible mode.
 
 ---
 
@@ -41,15 +48,16 @@ If you share other servers with someone, or they're on your friends list, Discor
 ### Prerequisites
 
 - Node.js 22.12.0+
-- A Discord application with a bot user ([Discord Developer Portal](https://discord.com/developers/applications))
-- Privileged intents enabled in the portal: `Server Members Intent` and `Presence Intent`
-- A private Discord server to use as your hearth server (optional - users can also bring their own via `/host`, see below)
+- A Fluxer application with a bot user and bot token
+- A private Fluxer server to use as your hearth server (optional, users can also bring their own via `/host`, see below)
+
+Fluxer has no privileged-intent system, unlike Discord: member and presence events reach the bot unfiltered, so there's no separate approval step to enable them.
 
 ### Installation
 
 ```bash
-git clone https://github.com/MPZ-00/hearth.git
-cd hearth
+git clone <this repository>
+cd hearth-fluxer
 npm install
 cp .env.example .env
 ```
@@ -59,40 +67,33 @@ cp .env.example .env
 Edit `.env`:
 
 ```
-DISCORD_TOKEN=your_bot_token
+FLUXER_TOKEN=your_bot_token
 CLIENT_ID=your_application_id
 HEARTH_GUILD_ID=your_private_server_id
+HEARTH_INVITE_CHANNEL_ID=your_invite_channel_id
 DB_PATH=./data/hearth.db
 ```
 
-`HEARTH_GUILD_ID` is optional. Leave it unset if you only want users bringing their own server via `/host`.
+`HEARTH_GUILD_ID` and `HEARTH_INVITE_CHANNEL_ID` are optional. Leave them unset if you only want users bringing their own server via `/host`.
 
 ### Running
 
 ```bash
-# Register slash commands (run once, or whenever you change commands)
-npm run deploy
-
-# Start the bot
 npm run dev        # development, with live reload
 npm start          # production (after npm run build)
 ```
 
+Command registration (`npm run deploy` in the discord.js version) is on hold until Fluxer has a command API to register against, see the note at the top of this file.
+
 ### Generate your install link
 
-Users add hearth to their Discord apps, not to a server. The install URL uses `integration_type=1` (user install):
-
-```
-https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&integration_type=1&scope=applications.commands
-```
-
-Replace `YOUR_CLIENT_ID` with your application ID from the [Developer Portal](https://discord.com/developers/applications). You can also generate this link from the portal under **Installation → Install Link**.
+Users add hearth to their Fluxer accounts, not to a server. Fluxer's OAuth2 install-link format isn't confirmed yet (see PORTING.md), so this section will fill in once it is.
 
 ### Setting up your hearth server (optional, shared mode)
 
-1. Create a new Discord server. Keep it private and disable the default invite link.
-2. Invite the bot (needs `Create Instant Invite` and `Kick Members` permissions).
-3. Copy the server ID into `HEARTH_GUILD_ID` in your `.env`.
+1. Create a new Fluxer server. Keep it private and disable the default invite link.
+2. Invite the bot (needs permission to create invites and kick members).
+3. Copy the server ID into `HEARTH_GUILD_ID`, and a text channel ID into `HEARTH_INVITE_CHANNEL_ID`, in your `.env`.
 4. When someone runs `/status on`, the bot generates a one-time invite and sends it to them so they can join.
 
 Skip this section entirely if you'd rather have users bring their own server via `/host invite` (zero bot permissions required). Both modes can run side by side.
@@ -116,13 +117,13 @@ Skip this section entirely if you'd rather have users bring their own server via
 
 ---
 
-If hearth is useful to you, consider [sponsoring](https://github.com/sponsors/MPZ-00) to help keep it going.
+If hearth is useful to you, consider [sponsoring the original project](https://github.com/sponsors/MPZ-00) to help keep it going.
 
 ---
 
 ## Contributing
 
-Issues and PRs welcome. Open an issue before starting something large so we can talk through the approach first. For quicker back-and-forth, join the [dev server](https://discord.gg/qsTAU7Vyfz).
+Issues and PRs welcome. Open an issue before starting something large so we can talk through the approach first.
 
 ## License
 
