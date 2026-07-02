@@ -1,3 +1,6 @@
+// TODO(fluxer-commands): parked discord.js-shaped logic, not wired into the running bot.
+// Fluxer has no slash-command/interaction system yet (see PORTING.md). Excluded from the
+// build in tsconfig.json until Fluxer ships a command API to rewrite this against.
 import { EmbedBuilder, MessageFlags, type ChatInputCommandInteraction } from 'discord.js'
 import { BOT_VERSION } from '../version'
 import { config } from '../config'

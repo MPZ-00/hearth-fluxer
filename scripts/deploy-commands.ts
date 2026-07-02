@@ -1,3 +1,6 @@
+// TODO(fluxer-commands): parked discord.js-shaped logic, not wired into package.json scripts.
+// Fluxer has no slash-command/interaction system yet (see PORTING.md). Rewrite against
+// Fluxer's own command-registration endpoint once one exists.
 import { REST, Routes, SlashCommandBuilder } from 'discord.js'
 import { config } from '../src/config'
 

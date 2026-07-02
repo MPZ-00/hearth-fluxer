@@ -6,6 +6,9 @@
  *   tsx scripts/setup-server.ts dev <GUILD_ID>
  */
 
+// TODO(fluxer-commands): parked discord.js-shaped logic, not wired into package.json scripts.
+// Uses Discord-specific channel/role/automod provisioning (auto-mod trigger types, embeds)
+// that would need a from-scratch rewrite against Fluxer's own resources. See PORTING.md.
 import {
     Client,
     GatewayIntentBits,
@@ -65,7 +68,7 @@ async function fetchCommandMap(): Promise<CmdMap> {
         }[]
         return Object.fromEntries(cmds.map((c) => [c.name, c.id]))
     } catch {
-        console.warn('Could not fetch command IDs — messages will use plain text fallback.')
+        console.warn('Could not fetch command IDs, messages will use plain text fallback.')
         return {}
     }
 }
@@ -428,7 +431,7 @@ For reproducible bugs, post in <#${bugReports.id}>.`
     try {
         await setupAutoMod(guild, modLogs.id, [keeper.id, tender.id])
     } catch {
-        console.warn('AutoMod setup failed — ensure the bot has Manage Server permission.')
+        console.warn('AutoMod setup failed, ensure the bot has Manage Server permission.')
     }
 
     const owner = await guild.fetchOwner()
@@ -544,7 +547,7 @@ async function setupDev(guild: Guild, cmd: CmdMap, botId: string) {
     try {
         await setupAutoMod(guild, logs.id, [architect.id, maintainer.id])
     } catch {
-        console.warn('AutoMod setup failed — ensure the bot has Manage Server permission.')
+        console.warn('AutoMod setup failed, ensure the bot has Manage Server permission.')
     }
 
     const owner = await guild.fetchOwner()
