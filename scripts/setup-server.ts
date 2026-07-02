@@ -6,25 +6,18 @@
  *   tsx scripts/setup-server.ts dev <GUILD_ID>
  */
 
-// TODO(fluxer-commands): parked discord.js-shaped logic, not wired into package.json scripts.
-// Uses Discord-specific channel/role/automod provisioning (auto-mod trigger types, embeds)
-// that would need a from-scratch rewrite against Fluxer's own resources. See PORTING.md.
+// TODO(fluxer-commands): command-mention formatting (fetchCommandMap/s()) is parked pending
+// Fluxer's own command API, same as src/commands/*.ts. Falls back to plain `/name` text.
+// AutoMod setup was dropped entirely, not parked: Fluxer has no auto-moderation system
+// (confirmed, no AutoMod-related code anywhere in fluxerapp/fluxer). See PORTING.md.
+import { FluxerRest } from '../src/fluxer/rest'
 import {
-    Client,
-    GatewayIntentBits,
-    ChannelType,
-    PermissionFlagsBits,
-    AutoModerationRuleTriggerType,
-    AutoModerationActionType,
-    AutoModerationRuleEventType,
-    AutoModerationRuleKeywordPresetType,
-    REST,
-    Routes,
-    type Guild,
-    type CategoryChannel,
-    type TextChannel,
-    type Role,
-} from 'discord.js'
+    FluxerChannelTypes,
+    FluxerPermissions,
+    type FluxerChannel,
+    type FluxerChannelOverwrite,
+    type FluxerRole,
+} from '../src/fluxer/types'
 import { config } from '../src/config'
 
 // ---------------------------------------------------------------------------
@@ -43,64 +36,43 @@ if ((serverType !== 'official' && serverType !== 'dev') || !guildId) {
 // ---------------------------------------------------------------------------
 
 const C = {
-    ember: '#e8735a',
-    deepEmber: '#c45c3a',
-    warmOrange: '#f5a27a',
-    ash: '#8c7b75',
-    charcoal: '#1a1a1a',
-    coolGrey: '#6b8c8a',
-    ashGrey: '#3d3535',
+    ember: 0xe8735a,
+    deepEmber: 0xc45c3a,
+    warmOrange: 0xf5a27a,
+    ash: 0x8c7b75,
+    charcoal: 0x1a1a1a,
+    coolGrey: 0x6b8c8a,
+    ashGrey: 0x3d3535,
 } as const
 
 // ---------------------------------------------------------------------------
 // Command mentions
 // ---------------------------------------------------------------------------
 
-type CmdMap = Record<string, string>
-
-/** Fetches registered global slash command IDs. Returns empty map on failure. */
-async function fetchCommandMap(): Promise<CmdMap> {
-    const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN)
-    try {
-        const cmds = (await rest.get(Routes.applicationCommands(config.CLIENT_ID))) as {
-            id: string
-            name: string
-        }[]
-        return Object.fromEntries(cmds.map((c) => [c.name, c.id]))
-    } catch {
-        console.warn('Could not fetch command IDs, messages will use plain text fallback.')
-        return {}
-    }
-}
-
-/** Returns an interactive slash command mention, or backtick fallback if ID is unknown. */
-function s(cmd: CmdMap, name: string): string {
-    const id = cmd[name]
-    return id ? `</${name}:${id}>` : `\`/${name}\``
+/** Returns the plain-text command form. Interactive mentions need Fluxer's own command API. */
+function s(name: string): string {
+    return `\`/${name}\``
 }
 
 // ---------------------------------------------------------------------------
 // Initial messages
 // ---------------------------------------------------------------------------
 
-function buildMessages(cmd: CmdMap, clientId: string) {
-    const installUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&integration_type=1&scope=applications.commands`
-
+function buildMessages() {
     return {
         official: {
             welcome: `Welcome to the hearth server.
 
 hearth lets you appear online only to the people you choose. Everyone else sees you offline.
 
-**To get started:** add the bot to your apps, then run ${s(cmd, 'status')} \`on\`.
-**[Install App](${installUrl})**
+**To get started:** add the bot to your apps, then run ${s('status')} \`on\`.
 
 Once you have joined this server, your circle can see your real status.
 
-Use ${s(cmd, 'add')} to add people to your circle. They need to add the bot and run ${s(cmd, 'status')} \`on\` themselves before you can see their status in return.
-${s(cmd, 'status')} \`off\` removes you immediately. You go dark to everyone.
+Use ${s('add')} to add people to your circle. They need to add the bot and run ${s('status')} \`on\` themselves before you can see their status in return.
+${s('status')} \`off\` removes you immediately. You go dark to everyone.
 
-Source and self-hosting: https://github.com/MPZ-00/hearth`,
+Source and self-hosting: https://github.com/MPZ-00/hearth-fluxer`,
 
             rules: `1. Be decent to each other.
 2. Keep #help on topic: setup questions, bugs, and usage only.
@@ -125,24 +97,22 @@ The more specific, the faster it gets fixed.`,
 
 If you're making a non-obvious call in a PR, drop a note here first. Keeps the PR comments clean and gives context to anyone who comes back to it later.`,
 
-            roadmap: `Current focus: v0.1.0, core functionality stable and self-hostable.
+            roadmap: `Current focus: getting the Fluxer port to a working state, starting with a real command surface once Fluxer ships one.
 
-v0.2.0 will add multi-tenant support (one hosted instance, many hearth guilds).
-
-Priorities are tracked in GitHub issues. This channel is for broader direction discussion.`,
+Priorities are tracked in GitHub issues and PORTING.md. This channel is for broader direction discussion.`,
 
             botTesting: `Test the dev bot instance here. The dev bot runs against a separate database so nothing here affects production.
 
-Useful commands to test:
-${s(cmd, 'status')} \`on\`: generates a one-time invite
-${s(cmd, 'status')} \`off\`: kicks you from the hearth guild
-${s(cmd, 'add')}: adds to whitelist
-${s(cmd, 'list')}: shows your circle
-${s(cmd, 'notify')} \`on\`, then go offline and come back online`,
+Useful commands to test (once the command layer works again):
+${s('status')} \`on\`: generates a one-time invite
+${s('status')} \`off\`: kicks you from the hearth guild
+${s('add')}: adds to whitelist
+${s('list')}: shows your circle
+${s('notify')} \`on\`, then go offline and come back online`,
 
             presenceLab: `Dedicated channel for testing presence events. Keep a few test accounts sitting here so \`presenceUpdate\` fires reliably.
 
-To test notifications: enable ${s(cmd, 'notify')} \`on\`, have a second account go offline, then come back online. Check that the DM arrives and that flapping (going offline and online quickly) only sends one notification.`,
+To test notifications: enable ${s('notify')} \`on\`, have a second account go offline, then come back online. Check that the DM arrives and that flapping (going offline and online quickly) only sends one notification.`,
         },
     }
 }
@@ -151,296 +121,234 @@ To test notifications: enable ${s(cmd, 'notify')} \`on\`, have a second account 
 // Idempotent helpers
 // ---------------------------------------------------------------------------
 
-type RoleOptions = Parameters<Guild['roles']['create']>[0]
-
-async function getOrCreateRole(guild: Guild, options: RoleOptions): Promise<Role> {
-    const existing = guild.roles.cache.find((r) => r.name === options.name)
+async function getOrCreateRole(
+    rest: FluxerRest,
+    guildId: string,
+    existingRoles: FluxerRole[],
+    options: { name: string; color: number; hoist?: boolean; permissions?: bigint },
+): Promise<FluxerRole> {
+    const existing = existingRoles.find((r) => r.name === options.name)
     if (existing) return existing
-    return guild.roles.create(options)
+    const role = await rest.createGuildRole(guildId, {
+        name: options.name,
+        color: options.color,
+        permissions: options.permissions?.toString(),
+    })
+    if (options.hoist) await rest.updateGuildRole(guildId, role.id, { hoist: true })
+    existingRoles.push(role)
+    return role
 }
 
-async function getOrCreateCategory(guild: Guild, name: string): Promise<CategoryChannel> {
-    const existing = guild.channels.cache.find(
-        (c) => c.type === ChannelType.GuildCategory && c.name === name,
+async function getOrCreateCategory(
+    rest: FluxerRest,
+    guildId: string,
+    existingChannels: FluxerChannel[],
+    name: string,
+): Promise<FluxerChannel> {
+    const existing = existingChannels.find(
+        (c) => c.type === FluxerChannelTypes.GUILD_CATEGORY && c.name === name,
     )
-    if (existing) return existing as CategoryChannel
-    return guild.channels.create({
+    if (existing) return existing
+    const category = await rest.createGuildChannel(guildId, {
+        type: FluxerChannelTypes.GUILD_CATEGORY,
         name,
-        type: ChannelType.GuildCategory,
-    }) as Promise<CategoryChannel>
+    })
+    existingChannels.push(category)
+    return category
 }
 
 async function getOrCreateChannel(
-    guild: Guild,
+    rest: FluxerRest,
+    guildId: string,
+    existingChannels: FluxerChannel[],
     name: string,
-    parent: CategoryChannel,
-    overwrites: { id: string; allow?: bigint[]; deny?: bigint[] }[] = [],
-): Promise<TextChannel> {
-    const existing = guild.channels.cache.find(
-        (c) => c.name === name && 'parentId' in c && c.parentId === parent.id,
-    )
-    if (existing) return existing as TextChannel
-    return guild.channels.create({
+    parent: FluxerChannel,
+    overwrites: FluxerChannelOverwrite[] = [],
+): Promise<FluxerChannel> {
+    const existing = existingChannels.find((c) => c.name === name && c.parent_id === parent.id)
+    if (existing) return existing
+    const channel = await rest.createGuildChannel(guildId, {
+        type: FluxerChannelTypes.GUILD_TEXT,
         name,
-        type: ChannelType.GuildText,
-        parent: parent.id,
-        permissionOverwrites: overwrites,
-    }) as Promise<TextChannel>
+        parent_id: parent.id,
+        permission_overwrites: overwrites,
+    })
+    existingChannels.push(channel)
+    return channel
 }
 
 /** Edits the bot's existing pinned message, or sends a new one and pins it. */
-async function pinOrUpdate(channel: TextChannel, botId: string, content: string): Promise<void> {
-    const pins = await channel.messages.fetchPinned()
+async function pinOrUpdate(
+    rest: FluxerRest,
+    channel: FluxerChannel,
+    botId: string,
+    content: string,
+): Promise<void> {
+    const pins = await rest.listPinnedMessages(channel.id)
     const mine = pins.find((m) => m.author.id === botId)
     if (mine) {
-        await mine.edit(content)
+        await rest.editMessage(channel.id, mine.id, content)
     } else {
-        const msg = await channel.send(content)
-        await msg.pin()
+        const msg = await rest.sendMessage(channel.id, content)
+        await rest.pinMessage(channel.id, msg.id)
     }
 }
 
-function readonlyOverwrites(everyoneId: string, writerRoleId: string) {
+function readonlyOverwrites(everyoneId: string, writerRoleId: string): FluxerChannelOverwrite[] {
     return [
-        { id: everyoneId, deny: [PermissionFlagsBits.SendMessages] },
-        { id: writerRoleId, allow: [PermissionFlagsBits.SendMessages] },
+        { id: everyoneId, type: 0, deny: FluxerPermissions.SEND_MESSAGES.toString() },
+        { id: writerRoleId, type: 0, allow: FluxerPermissions.SEND_MESSAGES.toString() },
     ]
 }
 
-function staffOnlyOverwrites(everyoneId: string, staffRoleId: string) {
+function staffOnlyOverwrites(everyoneId: string, staffRoleId: string): FluxerChannelOverwrite[] {
     return [
-        { id: everyoneId, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: everyoneId, type: 0, deny: FluxerPermissions.VIEW_CHANNEL.toString() },
         {
             id: staffRoleId,
-            allow: [
-                PermissionFlagsBits.ViewChannel,
-                PermissionFlagsBits.ReadMessageHistory,
-                PermissionFlagsBits.SendMessages,
-            ],
+            type: 0,
+            allow: (
+                FluxerPermissions.VIEW_CHANNEL |
+                FluxerPermissions.READ_MESSAGE_HISTORY |
+                FluxerPermissions.SEND_MESSAGES
+            ).toString(),
         },
     ]
-}
-
-// ---------------------------------------------------------------------------
-// AutoMod
-// ---------------------------------------------------------------------------
-
-type AutoModCreateOptions = Parameters<Guild['autoModerationRules']['create']>[0]
-
-async function setupAutoMod(
-    guild: Guild,
-    alertChannelId: string,
-    exemptRoleIds: string[],
-): Promise<void> {
-    const existing = await guild.autoModerationRules.fetch()
-    const existingNames = new Set(existing.map((r) => r.name))
-
-    async function ensure(name: string, options: Omit<AutoModCreateOptions, 'name'>) {
-        if (existingNames.has(name)) {
-            console.log(`  AutoMod rule already exists: ${name}`)
-            return
-        }
-        await guild.autoModerationRules.create({ name, ...options })
-        console.log(`  AutoMod rule created: ${name}`)
-    }
-
-    await ensure('Block profanity, sexual content and slurs', {
-        eventType: AutoModerationRuleEventType.MessageSend,
-        triggerType: AutoModerationRuleTriggerType.KeywordPreset,
-        triggerMetadata: {
-            presets: [
-                AutoModerationRuleKeywordPresetType.Profanity,
-                AutoModerationRuleKeywordPresetType.SexualContent,
-                AutoModerationRuleKeywordPresetType.Slurs,
-            ],
-        },
-        actions: [
-            {
-                type: AutoModerationActionType.BlockMessage,
-                metadata: { customMessage: 'Your message was blocked.' },
-            },
-            {
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: { channel: alertChannelId },
-            },
-        ],
-        exemptRoles: exemptRoleIds,
-        enabled: true,
-    })
-
-    await ensure('Block mention spam', {
-        eventType: AutoModerationRuleEventType.MessageSend,
-        triggerType: AutoModerationRuleTriggerType.MentionSpam,
-        triggerMetadata: {
-            mentionTotalLimit: 4,
-            mentionRaidProtectionEnabled: true,
-        },
-        actions: [
-            { type: AutoModerationActionType.BlockMessage },
-            {
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: { channel: alertChannelId },
-            },
-            {
-                type: AutoModerationActionType.Timeout,
-                metadata: { durationSeconds: 300 },
-            },
-        ],
-        exemptRoles: exemptRoleIds,
-        enabled: true,
-    })
-
-    await ensure('Block spam', {
-        eventType: AutoModerationRuleEventType.MessageSend,
-        triggerType: AutoModerationRuleTriggerType.Spam,
-        actions: [
-            { type: AutoModerationActionType.BlockMessage },
-            {
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: { channel: alertChannelId },
-            },
-        ],
-        exemptRoles: exemptRoleIds,
-        enabled: true,
-    })
 }
 
 // ---------------------------------------------------------------------------
 // Official server setup
 // ---------------------------------------------------------------------------
 
-async function setupOfficial(guild: Guild, cmd: CmdMap, botId: string) {
-    const M = buildMessages(cmd, botId).official
+async function setupOfficial(rest: FluxerRest, guildId: string, botId: string) {
+    const M = buildMessages().official
 
-    await guild.roles.fetch()
-    await guild.channels.fetch()
+    const roles = await rest.listGuildRoles(guildId)
+    const channels = await rest.listGuildChannels(guildId)
+    const everyoneId = guildId // Fluxer's @everyone role ID equals the guild ID, same as Discord's
 
     console.log('Creating roles...')
-    const everyone = guild.roles.everyone
 
-    const keeper = await getOrCreateRole(guild, {
+    const keeper = await getOrCreateRole(rest, guildId, roles, {
         name: 'keeper',
-        colors: { primaryColor: C.ember },
+        color: C.ember,
         hoist: true,
-        permissions: [PermissionFlagsBits.Administrator],
+        permissions: FluxerPermissions.ADMINISTRATOR,
     })
-    const tender = await getOrCreateRole(guild, {
+    const tender = await getOrCreateRole(rest, guildId, roles, {
         name: 'tender',
-        colors: { primaryColor: C.deepEmber },
+        color: C.deepEmber,
         hoist: true,
-        permissions: [
-            PermissionFlagsBits.ManageMessages,
-            PermissionFlagsBits.KickMembers,
-            PermissionFlagsBits.ModerateMembers,
-        ],
+        permissions:
+            FluxerPermissions.MANAGE_MESSAGES |
+            FluxerPermissions.KICK_MEMBERS |
+            FluxerPermissions.MODERATE_MEMBERS,
     })
-    await getOrCreateRole(guild, {
-        name: 'ember',
-        colors: { primaryColor: C.warmOrange },
-        hoist: false,
-        permissions: [],
-    })
-    await getOrCreateRole(guild, {
-        name: 'guest',
-        colors: { primaryColor: C.ash },
-        hoist: false,
-        permissions: [],
-    })
-    await getOrCreateRole(guild, {
+    await getOrCreateRole(rest, guildId, roles, { name: 'ember', color: C.warmOrange })
+    await getOrCreateRole(rest, guildId, roles, { name: 'guest', color: C.ash })
+    await getOrCreateRole(rest, guildId, roles, {
         name: 'hearth',
-        colors: { primaryColor: C.charcoal },
-        hoist: false,
-        permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
+        color: C.charcoal,
+        permissions: FluxerPermissions.SEND_MESSAGES | FluxerPermissions.EMBED_LINKS,
     })
 
-    await guild.roles.everyone.setPermissions([
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.ReadMessageHistory,
-        PermissionFlagsBits.SendMessages,
-    ])
+    await rest.updateGuildRole(guildId, everyoneId, {
+        permissions: (
+            FluxerPermissions.VIEW_CHANNEL |
+            FluxerPermissions.READ_MESSAGE_HISTORY |
+            FluxerPermissions.SEND_MESSAGES
+        ).toString(),
+    })
 
     console.log('Creating channels...')
 
-    const catStart = await getOrCreateCategory(guild, '📌 start here')
-    const catUpdates = await getOrCreateCategory(guild, '🔔 updates')
-    const catCommunity = await getOrCreateCategory(guild, '🔥 community')
-    const catSupport = await getOrCreateCategory(guild, '🛠 support')
+    const catStart = await getOrCreateCategory(rest, guildId, channels, '📌 start here')
+    const catUpdates = await getOrCreateCategory(rest, guildId, channels, '🔔 updates')
+    const catCommunity = await getOrCreateCategory(rest, guildId, channels, '🔥 community')
+    const catSupport = await getOrCreateCategory(rest, guildId, channels, '🛠 support')
 
     const welcome = await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'welcome',
         catStart,
-        readonlyOverwrites(everyone.id, keeper.id),
+        readonlyOverwrites(everyoneId, keeper.id),
     )
     const rules = await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'rules',
         catStart,
-        readonlyOverwrites(everyone.id, keeper.id),
+        readonlyOverwrites(everyoneId, keeper.id),
     )
     const announcements = await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'announcements',
         catUpdates,
-        readonlyOverwrites(everyone.id, keeper.id),
+        readonlyOverwrites(everyoneId, keeper.id),
     )
     await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'changelog',
         catUpdates,
-        readonlyOverwrites(everyone.id, keeper.id),
+        readonlyOverwrites(everyoneId, keeper.id),
     )
-    await getOrCreateChannel(guild, 'general', catCommunity)
-    const showcase = await getOrCreateChannel(guild, 'showcase', catCommunity)
+    await getOrCreateChannel(rest, guildId, channels, 'general', catCommunity)
+    const showcase = await getOrCreateChannel(rest, guildId, channels, 'showcase', catCommunity)
     const help = await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'help',
         catSupport,
-        readonlyOverwrites(everyone.id, tender.id),
+        readonlyOverwrites(everyoneId, tender.id),
     )
-    const bugReports = await getOrCreateChannel(guild, 'bug-reports', catSupport)
-    const modLogs = await getOrCreateChannel(
-        guild,
+    const bugReports = await getOrCreateChannel(rest, guildId, channels, 'bug-reports', catSupport)
+    await getOrCreateChannel(
+        rest,
+        guildId,
+        channels,
         'mod-logs',
         catSupport,
-        staffOnlyOverwrites(everyone.id, tender.id),
+        staffOnlyOverwrites(everyoneId, tender.id),
     )
 
     console.log('Posting messages...')
 
     const helpContent = `Common setup issues:
 
-1. ${s(cmd, 'status')} \`on\` gives an error: make sure the bot is installed to your apps. Install link in <#${welcome.id}>.
-2. Not getting DMs: run ${s(cmd, 'notify')} \`on\`. The other person also needs ${s(cmd, 'status')} \`on\`.
-3. Your circle can't see you: they need to run ${s(cmd, 'status')} \`on\` and join the hearth server too.
+1. ${s('status')} \`on\` gives an error: make sure the bot is installed to your apps. Install link in <#${welcome.id}>.
+2. Not getting DMs: run ${s('notify')} \`on\`. The other person also needs ${s('status')} \`on\`.
+3. Your circle can't see you: they need to run ${s('status')} \`on\` and join the hearth server too.
 
 For reproducible bugs, post in <#${bugReports.id}>.`
 
-    await pinOrUpdate(welcome, botId, M.welcome)
-    await pinOrUpdate(rules, botId, M.rules)
-    await pinOrUpdate(help, botId, helpContent)
-    await pinOrUpdate(bugReports, botId, M.bugReportTemplate)
+    await pinOrUpdate(rest, welcome, botId, M.welcome)
+    await pinOrUpdate(rest, rules, botId, M.rules)
+    await pinOrUpdate(rest, help, botId, helpContent)
+    await pinOrUpdate(rest, bugReports, botId, M.bugReportTemplate)
 
-    const annPins = await announcements.messages.fetchPinned()
-    if (annPins.size === 0) await announcements.send('Announcements will appear here.')
+    const annPins = await rest.listPinnedMessages(announcements.id)
+    if (annPins.length === 0)
+        await rest.sendMessage(announcements.id, 'Announcements will appear here.')
 
-    const showcasePins = await showcase.messages.fetchPinned()
-    if (showcasePins.size === 0) await showcase.send(M.showcase)
+    const showcasePins = await rest.listPinnedMessages(showcase.id)
+    if (showcasePins.length === 0) await rest.sendMessage(showcase.id, M.showcase)
 
-    console.log('Configuring AutoMod...')
-    try {
-        await setupAutoMod(guild, modLogs.id, [keeper.id, tender.id])
-    } catch {
-        console.warn('AutoMod setup failed, ensure the bot has Manage Server permission.')
-    }
-
-    const owner = await guild.fetchOwner()
-    if (!owner.roles.cache.has(keeper.id)) {
-        await owner.roles.add(keeper)
-        console.log(`Assigned keeper to ${owner.user.tag}`)
+    const guild = await rest.getGuild(guildId)
+    const ownerMember = await rest.getGuildMember(guildId, guild.owner_id)
+    if (!ownerMember.roles.includes(keeper.id)) {
+        await rest.addGuildMemberRole(guildId, guild.owner_id, keeper.id)
+        console.log(`Assigned keeper to ${ownerMember.user.username}`)
     }
     console.log(
-        'Move the bot\'s role above "keeper" in Server Settings > Roles before users can be assigned it.',
+        'Move the bot\'s role above "keeper" in server settings before users can be assigned it.',
     )
 }
 
@@ -448,115 +356,116 @@ For reproducible bugs, post in <#${bugReports.id}>.`
 // Dev server setup
 // ---------------------------------------------------------------------------
 
-async function setupDev(guild: Guild, cmd: CmdMap, botId: string) {
-    const M = buildMessages(cmd, botId).dev
+async function setupDev(rest: FluxerRest, guildId: string, botId: string) {
+    const M = buildMessages().dev
 
-    await guild.roles.fetch()
-    await guild.channels.fetch()
+    const roles = await rest.listGuildRoles(guildId)
+    const channels = await rest.listGuildChannels(guildId)
+    const everyoneId = guildId
 
     console.log('Creating roles...')
-    const everyone = guild.roles.everyone
 
-    const architect = await getOrCreateRole(guild, {
+    const architect = await getOrCreateRole(rest, guildId, roles, {
         name: 'architect',
-        colors: { primaryColor: C.ember },
+        color: C.ember,
         hoist: true,
-        permissions: [PermissionFlagsBits.Administrator],
+        permissions: FluxerPermissions.ADMINISTRATOR,
     })
-    const maintainer = await getOrCreateRole(guild, {
+    const maintainer = await getOrCreateRole(rest, guildId, roles, {
         name: 'maintainer',
-        colors: { primaryColor: C.deepEmber },
+        color: C.deepEmber,
         hoist: true,
-        permissions: [PermissionFlagsBits.ManageMessages],
+        permissions: FluxerPermissions.MANAGE_MESSAGES,
     })
-    await getOrCreateRole(guild, {
-        name: 'spark',
-        colors: { primaryColor: C.warmOrange },
-        hoist: false,
-        permissions: [],
-    })
-    await getOrCreateRole(guild, {
-        name: 'tester',
-        colors: { primaryColor: C.coolGrey },
-        hoist: false,
-        permissions: [],
-    })
-    await getOrCreateRole(guild, {
+    await getOrCreateRole(rest, guildId, roles, { name: 'spark', color: C.warmOrange })
+    await getOrCreateRole(rest, guildId, roles, { name: 'tester', color: C.coolGrey })
+    await getOrCreateRole(rest, guildId, roles, {
         name: 'hearth [dev]',
-        colors: { primaryColor: C.ashGrey },
-        hoist: false,
-        permissions: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks],
+        color: C.ashGrey,
+        permissions: FluxerPermissions.SEND_MESSAGES | FluxerPermissions.EMBED_LINKS,
     })
 
-    await guild.roles.everyone.setPermissions([
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.ReadMessageHistory,
-        PermissionFlagsBits.SendMessages,
-    ])
+    await rest.updateGuildRole(guildId, everyoneId, {
+        permissions: (
+            FluxerPermissions.VIEW_CHANNEL |
+            FluxerPermissions.READ_MESSAGE_HISTORY |
+            FluxerPermissions.SEND_MESSAGES
+        ).toString(),
+    })
 
     console.log('Creating channels...')
 
-    const catMeta = await getOrCreateCategory(guild, '📌 meta')
-    const catDev = await getOrCreateCategory(guild, '🔨 development')
-    const catTesting = await getOrCreateCategory(guild, '🧪 testing')
-    const catBots = await getOrCreateCategory(guild, '🤖 bots')
+    const catMeta = await getOrCreateCategory(rest, guildId, channels, '📌 meta')
+    const catDev = await getOrCreateCategory(rest, guildId, channels, '🔨 development')
+    const catTesting = await getOrCreateCategory(rest, guildId, channels, '🧪 testing')
+    const catBots = await getOrCreateCategory(rest, guildId, channels, '🤖 bots')
 
-    const devNotes = await getOrCreateChannel(guild, 'dev-notes', catMeta)
+    const devNotes = await getOrCreateChannel(rest, guildId, channels, 'dev-notes', catMeta)
     const roadmap = await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'roadmap',
         catMeta,
-        readonlyOverwrites(everyone.id, architect.id),
+        readonlyOverwrites(everyoneId, architect.id),
     )
     await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'commits',
         catDev,
-        readonlyOverwrites(everyone.id, maintainer.id),
+        readonlyOverwrites(everyoneId, maintainer.id),
     )
     await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'pull-requests',
         catDev,
-        readonlyOverwrites(everyone.id, maintainer.id),
+        readonlyOverwrites(everyoneId, maintainer.id),
     )
     await getOrCreateChannel(
-        guild,
+        rest,
+        guildId,
+        channels,
         'issues',
         catDev,
-        readonlyOverwrites(everyone.id, maintainer.id),
+        readonlyOverwrites(everyoneId, maintainer.id),
     )
-    const botTesting = await getOrCreateChannel(guild, 'bot-testing', catTesting)
-    const presenceLab = await getOrCreateChannel(guild, 'presence-lab', catTesting)
-    const logs = await getOrCreateChannel(
-        guild,
+    const botTesting = await getOrCreateChannel(rest, guildId, channels, 'bot-testing', catTesting)
+    const presenceLab = await getOrCreateChannel(
+        rest,
+        guildId,
+        channels,
+        'presence-lab',
+        catTesting,
+    )
+    await getOrCreateChannel(
+        rest,
+        guildId,
+        channels,
         'logs',
         catTesting,
-        readonlyOverwrites(everyone.id, maintainer.id),
+        readonlyOverwrites(everyoneId, maintainer.id),
     )
-    await getOrCreateChannel(guild, 'hearth-dev', catBots)
+    await getOrCreateChannel(rest, guildId, channels, 'hearth-dev', catBots)
 
     console.log('Posting messages...')
 
-    await pinOrUpdate(devNotes, botId, M.devNotes)
-    await pinOrUpdate(roadmap, botId, M.roadmap)
-    await pinOrUpdate(botTesting, botId, M.botTesting)
-    await pinOrUpdate(presenceLab, botId, M.presenceLab)
+    await pinOrUpdate(rest, devNotes, botId, M.devNotes)
+    await pinOrUpdate(rest, roadmap, botId, M.roadmap)
+    await pinOrUpdate(rest, botTesting, botId, M.botTesting)
+    await pinOrUpdate(rest, presenceLab, botId, M.presenceLab)
 
-    console.log('Configuring AutoMod...')
-    try {
-        await setupAutoMod(guild, logs.id, [architect.id, maintainer.id])
-    } catch {
-        console.warn('AutoMod setup failed, ensure the bot has Manage Server permission.')
-    }
-
-    const owner = await guild.fetchOwner()
-    if (!owner.roles.cache.has(architect.id)) {
-        await owner.roles.add(architect)
-        console.log(`Assigned architect to ${owner.user.tag}`)
+    const guild = await rest.getGuild(guildId)
+    const ownerMember = await rest.getGuildMember(guildId, guild.owner_id)
+    if (!ownerMember.roles.includes(architect.id)) {
+        await rest.addGuildMemberRole(guildId, guild.owner_id, architect.id)
+        console.log(`Assigned architect to ${ownerMember.user.username}`)
     }
     console.log(
-        'Move the bot\'s role above "architect" in Server Settings > Roles before users can be assigned it.',
+        'Move the bot\'s role above "architect" in server settings before users can be assigned it.',
     )
 }
 
@@ -564,40 +473,27 @@ async function setupDev(guild: Guild, cmd: CmdMap, botId: string) {
 // Entry
 // ---------------------------------------------------------------------------
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] })
+async function main() {
+    const rest = new FluxerRest(config.FLUXER_TOKEN, config.FLUXER_API_BASE_URL)
 
-client.once('clientReady', async (c) => {
-    console.log(`Logged in as ${c.user.tag}`)
-
-    const guild = await client.guilds.fetch(guildId).catch(() => null)
+    const guild = await rest.getGuild(guildId).catch(() => null)
     if (!guild) {
         console.error(`Guild ${guildId} not found. Is the bot in that server?`)
         process.exit(1)
     }
-
-    const fullGuild = (await client.guilds.fetch(guildId)) as Guild
-    console.log(`Setting up ${serverType} server: ${fullGuild.name}`)
-
-    const cmd = await fetchCommandMap()
-    if (Object.keys(cmd).length === 0) {
-        console.warn(
-            'No command IDs found. Run `npm run deploy` first for interactive command mentions.',
-        )
-    }
+    console.log(`Setting up ${serverType} server: ${guild.name}`)
 
     try {
         if (serverType === 'official') {
-            await setupOfficial(fullGuild, cmd, c.user.id)
+            await setupOfficial(rest, guildId, config.CLIENT_ID)
         } else {
-            await setupDev(fullGuild, cmd, c.user.id)
+            await setupDev(rest, guildId, config.CLIENT_ID)
         }
         console.log('Done.')
     } catch (err) {
         console.error('Setup failed:', err)
+        process.exit(1)
     }
+}
 
-    client.destroy()
-    process.exit(0)
-})
-
-client.login(config.DISCORD_TOKEN)
+main()
