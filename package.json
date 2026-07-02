@@ -1,27 +1,23 @@
 {
-    "name": "hearth",
-    "version": "0.3.0",
-    "description": "Selective presence Discord bot: appear online only to your support circle",
+    "name": "hearth-fluxer",
+    "version": "0.1.0",
+    "description": "Selective presence Fluxer bot: appear online only to your support circle (Fluxer port of hearth)",
     "main": "dist/index.js",
     "type": "commonjs",
     "scripts": {
         "dev": "tsx watch src/index.ts --log-level debug",
         "build": "tsc && cp -r src/db/migrations dist/db/",
         "start": "node dist/index.js",
-        "deploy": "tsx scripts/deploy-commands.ts",
-        "deploy:dev": "tsx scripts/deploy-dev-commands.ts",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:studio": "drizzle-kit studio",
         "lint": "eslint src --ext .ts",
         "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.ts\"",
         "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.ts\"",
-        "prepare": "husky",
-        "setup:official": "tsx scripts/setup-server.ts official",
-        "setup:dev": "tsx scripts/setup-server.ts dev"
+        "prepare": "husky"
     },
     "keywords": [
-        "discord",
+        "fluxer",
         "bot",
         "presence",
         "privacy"
@@ -36,12 +32,13 @@
     },
     "dependencies": {
         "better-sqlite3": "^12.10.0",
-        "discord.js": "^14.26.4",
-        "drizzle-orm": "^0.45.2"
+        "drizzle-orm": "^0.45.2",
+        "ws": "^8.18.0"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.13",
         "@types/node": "^25.9.1",
+        "@types/ws": "^8.5.13",
         "@typescript-eslint/eslint-plugin": "^8.60.0",
         "@typescript-eslint/parser": "^8.60.0",
         "drizzle-kit": "^0.31.10",
