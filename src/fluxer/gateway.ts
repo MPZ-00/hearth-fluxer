@@ -89,6 +89,9 @@ export class FluxerGateway extends EventEmitter {
             }
             case GatewayOpcodes.HEARTBEAT_ACK:
                 break
+            case GatewayOpcodes.HEARTBEAT:
+                this.send(GatewayOpcodes.HEARTBEAT, this.lastSeq)
+                break
             case GatewayOpcodes.RECONNECT:
                 this.ws?.close()
                 break

@@ -27,6 +27,11 @@ confirmed from what's assumed so nobody mistakes a guess for a fact later.
   in `fluxer_gateway/src/gateway/gateway_handler.erl` and
   `packages/constants/src/GatewayConstants.ts`. `encoding=json` is accepted but currently a
   no-op, only JSON exists (no `etf`/binary support yet).
+- The server pushes opcode 1 (HEARTBEAT) to the client if it hasn't seen a client
+  heartbeat/ack for ~90% of the heartbeat interval, meaning "heartbeat now." Same semantics
+  as Discord's server-initiated heartbeat request. Confirmed in
+  `fluxer_gateway/src/gateway/gateway_handler_heartbeat.erl`; the client must reply with its
+  own HEARTBEAT immediately rather than waiting for the next scheduled tick.
 - No auto-moderation system exists (confirmed: no AutoMod-related code anywhere
   in the repo). `scripts/setup-server.ts`'s automod section was dropped
   outright, there's nothing to rewrite it against.
