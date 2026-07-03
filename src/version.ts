@@ -12,3 +12,4 @@ function shortHash(): string {
 const hash = shortHash()
 
 export const BOT_VERSION = hash ? `v${pkg.version} (${hash})` : `v${pkg.version}`
+export const REPO_URL = 'https://github.com/MPZ-00/hearth-fluxer'

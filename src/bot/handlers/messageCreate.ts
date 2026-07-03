@@ -1,5 +1,7 @@
 import type { FluxerClient } from '../client'
 import { logger } from '../../logger'
+import { config } from '../../config'
+import { BOT_VERSION, REPO_URL } from '../../version'
 
 // TODO: Fluxer has no slash-command/interaction system yet (confirmed: no ApplicationCommand
 // or InteractionType anywhere in fluxerapp/fluxer, as of this port), though one is reportedly
@@ -9,6 +11,11 @@ import { logger } from '../../logger'
 
 const PREFIX = '!'
 
+// Confirmed: packages/markdown_parser/rust/src/links.rs, mention_extractor.rs. Same
+// `<@id>` / `<@!id>` bracket syntax as Discord, IDs are the same snowflake-style strings
+// used elsewhere in the API.
+const MENTION_RE = /<@!?(\d+)>/g
+
 interface MessageCreateDispatch {
     id: string
     channel_id: string
@@ -17,8 +24,36 @@ interface MessageCreateDispatch {
     content: string
 }
 
+function mentionsBot(content: string, botId: string): boolean {
+    return new RegExp(`<@!?${botId}>`).test(content)
+}
+
+function stripMentions(content: string): string {
+    return content.replace(MENTION_RE, '').trim()
+}
+
+function buildHelpMessage(): string {
+    const lines = [
+        `**hearth** ${BOT_VERSION}`,
+        'You appear online only to the people you choose. Everyone else sees you offline.',
+        '',
+        `Source: ${REPO_URL}`,
+    ]
+    if (config.SUPPORT_SERVER_URL) lines.push(`Support: ${config.SUPPORT_SERVER_URL}`)
+    return lines.join('\n')
+}
+
 export async function handleMessageCreate(client: FluxerClient, message: MessageCreateDispatch) {
     if (message.author.bot) return
+
+    if (client.userId && mentionsBot(message.content, client.userId)) {
+        const rest = stripMentions(message.content).toLowerCase()
+        if (rest === '' || rest === 'help') {
+            await client.rest.sendMessage(message.channel_id, buildHelpMessage())
+            return
+        }
+    }
+
     if (!message.content.startsWith(PREFIX)) return
 
     const [name] = message.content.slice(PREFIX.length).trim().split(/\s+/)

@@ -55,6 +55,11 @@ confirmed from what's assumed so nobody mistakes a guess for a fact later.
   `UserPartialResponse`, `GuildInviteMetadataResponse`, `GuildRoleResponse`,
   `ChannelResponse`, `GuildResponse` in `packages/schema`. Notably `roles` on a
   member is an array of role **IDs**, not names.
+- User mentions in message content use the same `<@id>` / `<@!id>` bracket
+  syntax as Discord, in `packages/markdown_parser/rust/src/links.rs` and
+  `fluxer_messages/src/mention_extractor.rs`. Role mentions are `<@&id>`,
+  channel mentions are `<#id>`. Used by `messageCreate.ts` to detect
+  `@bot help`.
 
 ## Assumed: Discord-parity guesses, not verified against source
 
