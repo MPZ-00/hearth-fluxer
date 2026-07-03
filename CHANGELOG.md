@@ -4,6 +4,16 @@ All notable changes to hearth-fluxer are documented here. Format loosely follows
 
 Entries from 0.3.0 down are inherited from [hearth](https://github.com/MPZ-00/hearth), the discord.js project this repo was forked from. See PORTING.md for what changed in the fork itself.
 
+## [0.2.1-alpha] - 2026-07-03
+
+### Added
+
+- `deploy/hearth-fluxer.service.template` and `deploy/install-service.sh` for running the bot as a systemd service. The install script fills in the current user, checkout path, and node binary rather than hardcoding them
+
+### Fixed
+
+- The gateway logged "unhandled opcode 1" and ignored it. That opcode is the server asking the client to heartbeat immediately (same as Discord's server-initiated heartbeat request); the client now replies right away instead of waiting for the next scheduled tick
+
 ## [0.2.0-alpha] - 2026-07-03
 
 The bot now starts and runs cleanly end-to-end (verified against a live Fluxer instance). Still alpha: slash commands remain unreachable.
