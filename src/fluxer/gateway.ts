@@ -43,10 +43,7 @@ export class FluxerGateway extends EventEmitter {
 
     connect(): void {
         this.helloReceived = false
-        // Confirmed: fluxer_gateway/src/gateway/gateway_handler.erl. The URL from GET
-        // /gateway/bot is a bare base URL, the server requires ?v=1 on the upgrade request
-        // or it closes with 4012 (INVALID_API_VERSION) before sending HELLO. `encoding` is
-        // accepted but currently a no-op, only JSON exists.
+        // Server closes with 4012 if ?v=1 is missing, see PORTING.md.
         this.ws = new WebSocket(`${this.gatewayUrl}?v=1&encoding=json`)
 
         this.ws.on('open', () => logger.debug('Fluxer gateway: connected'))
