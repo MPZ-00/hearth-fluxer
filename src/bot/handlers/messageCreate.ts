@@ -11,9 +11,7 @@ import { BOT_VERSION, REPO_URL } from '../../version'
 
 const PREFIX = '!'
 
-// Confirmed: packages/markdown_parser/rust/src/links.rs, mention_extractor.rs. Same
-// `<@id>` / `<@!id>` bracket syntax as Discord, IDs are the same snowflake-style strings
-// used elsewhere in the API.
+// Mention syntax matches Discord's, confirmed in PORTING.md.
 const MENTION_RE = /<@!?(\d+)>/g
 
 interface MessageCreateDispatch {
