@@ -21,6 +21,12 @@ confirmed from what's assumed so nobody mistakes a guess for a fact later.
   `fluxer_api/src/api/constants/Gateway.ts`.
 - IDENTIFY/RESUME/HEARTBEAT payload shapes come from `fluxer_app/.../GatewaySocket.ts`.
   IDENTIFY carries a `flags` bitfield instead of `intents`.
+- The gateway URL from `GET /gateway/bot` is a bare base URL with no query string. The
+  client must append `?v=1` itself or the server closes the connection with code 4012
+  (`INVALID_API_VERSION`) immediately after the WebSocket upgrade, before HELLO. Confirmed
+  in `fluxer_gateway/src/gateway/gateway_handler.erl` and
+  `packages/constants/src/GatewayConstants.ts`. `encoding=json` is accepted but currently a
+  no-op, only JSON exists (no `etf`/binary support yet).
 - No auto-moderation system exists (confirmed: no AutoMod-related code anywhere
   in the repo). `scripts/setup-server.ts`'s automod section was dropped
   outright, there's nothing to rewrite it against.
