@@ -1,6 +1,6 @@
 {
     "name": "hearth-fluxer",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Selective presence Fluxer bot: appear online only to your support circle (Fluxer port of hearth)",
     "main": "dist/index.js",
     "type": "commonjs",

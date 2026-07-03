@@ -4,6 +4,27 @@ All notable changes to hearth-fluxer are documented here. Format loosely follows
 
 Entries from 0.3.0 down are inherited from [hearth](https://github.com/MPZ-00/hearth), the discord.js project this repo was forked from. See PORTING.md for what changed in the fork itself.
 
+## [0.2.0-alpha] - 2026-07-03
+
+The bot now starts and runs cleanly end-to-end (verified against a live Fluxer instance). Still alpha: slash commands remain unreachable.
+
+### Added
+
+- `@bot` and `@bot help` reply with what hearth is, the support server, source repo, and current version/commit, standing in for `/help` until Fluxer ships slash commands
+- `scripts/setup-server.ts` fully ported: roles, categories, channels, permission overwrites, and pinned announcement messages all target confirmed Fluxer REST endpoints
+- `--help` and positional-argument handling for `scripts/setup-server.ts`, plus a dedicated `scripts/tsconfig.json` so the editor resolves Node types there
+
+### Fixed
+
+- Gateway connections were closing immediately with code 4012 (`INVALID_API_VERSION`). `GET /gateway/bot` returns a bare URL with no query string; the client now appends `?v=1` itself as Fluxer requires
+- `list_pinned_messages` returns a paginated wrapper (`{items, has_more}`), not a bare array. The first port assumed Discord parity from the route's existence alone; `setup-server.ts` was crashing on pin lookups because of it
+- Restored `setup:official`/`setup:dev` npm scripts, dropped by mistake during the initial scaffold
+
+### Known limitations
+
+- Slash commands still don't work, same gap as 0.1.0-alpha
+- Some REST endpoints are still unverified Discord-parity guesses: guild invite listing, user lookup, DM creation, message sending, invite URL format. See `PORTING.md`
+
 ## [0.1.0-alpha] - 2026-07-03
 
 Initial public snapshot of the Fluxer port. Not usable as a working bot yet, see "Known limitations" below.
